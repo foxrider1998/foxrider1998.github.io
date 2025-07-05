@@ -1,0 +1,2283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Aris Portfolio - Professional Quality Assurance Engineer & Data Scientist specializing in automated testing, machine learning, and software quality assurance.">
+    <meta name="keywords" content="QA Engineer, Data Scientist, Quality Assurance, Machine Learning, Automated Testing, Software Testing, Python, Selenium, API Testing">
+    <meta name="author" content="Aris">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="7 days">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Aris Portfolio - QA Engineer & Data Scientist">
+    <meta property="og:description" content="Professional portfolio showcasing expertise in Quality Assurance, Data Science, and Test Automation.">
+    <meta property="og:image" content="DSC_0752.JPG">
+    <meta property="og:url" content="https://foxrider1998.github.io">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Aris Portfolio">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Aris Portfolio - QA Engineer & Data Scientist">
+    <meta name="twitter:description" content="Professional portfolio showcasing expertise in Quality Assurance, Data Science, and Test Automation.">
+    <meta name="twitter:image" content="DSC_0752.JPG">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&crop=face">
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=180&h=180&fit=crop&crop=face">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <title>Aris Portfolio - QA Engineer & Data Scientist</title>
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "Person",
+        "name": "Aris",
+        "jobTitle": ["Quality Assurance Engineer", "Data Scientist"],
+        "description": "Professional QA Engineer and Data Scientist with expertise in automated testing, machine learning, and software quality assurance.",
+        "url": "https://foxrider1998.github.io",
+        "image": "DSC_0752.JPG",
+        "sameAs": [
+            "https://github.com/foxrider1998",
+            "https://www.instagram.com/rizz4fun/",
+            "https://m.facebook.com/arisperma.2019"
+        ],
+        "knowsAbout": [
+            "Quality Assurance",
+            "Data Science",
+            "Machine Learning",
+            "Test Automation",
+            "Python Programming",
+            "Selenium WebDriver",
+            "API Testing",
+            "Mobile Testing"
+        ],
+        "hasOccupation": {
+            "@type": "Occupation",
+            "name": "Quality Assurance Engineer",
+            "occupationLocation": {
+                "@type": "Country",
+                "name": "Indonesia"
+            }
+        }
+    }
+    </script>
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --accent-color: #3b82f6;
+            --text-dark: #1f2937;
+            --text-light: #4b5563;
+            --bg-light: #f8fafc;
+        }
+        
+        /* Light Mode Explicit Styles */
+        body:not([data-theme="dark"]) {
+            background-color: #ffffff;
+            color: #1f2937;
+        }
+        
+        body:not([data-theme="dark"]) .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            color: #1f2937;
+        }
+        
+        body:not([data-theme="dark"]) .navbar-brand,
+        body:not([data-theme="dark"]) .nav-link {
+            color: #1f2937 !important;
+        }
+        
+        body:not([data-theme="dark"]) .hero {
+            color: #1f2937;
+        }
+        
+        body:not([data-theme="dark"]) .hero h1 {
+            color: #1f2937;
+        }
+        
+        body:not([data-theme="dark"]) .hero .lead {
+            color: #374151;
+        }
+        
+        body:not([data-theme="dark"]) .section-title h2 {
+            color: #1f2937;
+        }
+        
+        body:not([data-theme="dark"]) .section-title p {
+            color: #4b5563;
+        }
+        
+        body:not([data-theme="dark"]) .project-card-body h5 {
+            color: #1f2937;
+        }
+        
+        body:not([data-theme="dark"]) .project-description {
+            color: #374151;
+        }
+        
+        body:not([data-theme="dark"]) .contact-info h5 {
+            color: #1f2937;
+        }
+        
+        body:not([data-theme="dark"]) .contact-info p {
+            color: #4b5563;
+        }
+        
+        body:not([data-theme="dark"]) .contact-section h4 {
+            color: #1f2937;
+        }
+        
+        body:not([data-theme="dark"]) .contact-section p {
+            color: #686a6e;
+        }
+        
+        body:not([data-theme="dark"]) .about-text {
+            color: #1f2937 !important;
+        }
+        
+        body:not([data-theme="dark"]) .about-text p {
+            color: #374151 !important;
+            font-weight: 500;
+        }
+        
+        body:not([data-theme="dark"]) .feature-item h5 {
+            color: #2563eb !important;
+        }
+        
+        body:not([data-theme="dark"]) .feature-item .small {
+            color: #4b5563 !important;
+        }
+        
+        body:not([data-theme="dark"]) .section-title h2 {
+            color: #1f2937 !important;
+        }
+        
+        body:not([data-theme="dark"]) .section-title p {
+            color: #4b5563 !important;
+        }
+        
+        body:not([data-theme="dark"]) .project-title {
+            color: #1f2937 !important;
+        }
+        
+        body:not([data-theme="dark"]) .project-description {
+            color: #4b5563 !important;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            overflow-x: hidden;
+        }
+        
+        /* Navbar */
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary-color) !important;
+        }
+        
+        .navbar-nav .nav-link {
+            font-weight: 500;
+            color: var(--text-dark) !important;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-nav .nav-link:hover {
+            color: var(--primary-color) !important;
+        }
+        
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            display: flex;
+            align-items: center;
+            color: white;
+            position: relative;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><polygon fill="rgba(255,255,255,0.1)" points="0,1000 1000,1000 1000,0"/></svg>');
+            background-size: cover;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        
+        .hero .lead {
+            font-size: 1.3rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .btn-primary-custom {
+            background: white;
+            color: var(--primary-color);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary-custom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            color: var(--primary-color);
+        }
+        
+        .btn-download-cv {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-download-cv:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+            color: white;
+        }
+        
+        .btn-download-cv i {
+            transition: transform 0.3s ease;
+        }
+        
+        .btn-download-cv:hover i {
+            transform: translateY(2px);
+        }
+        
+        /* Social Icons */
+        .social-icons a {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            line-height: 50px;
+            text-align: center;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            margin: 0 10px;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .social-icons a:hover {
+            background: white;
+            color: var(--primary-color);
+            transform: translateY(-3px);
+        }
+        
+        /* Section Styling */
+        .section-padding {
+            padding: 80px 0;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .section-title h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 15px;
+        }
+        
+        .section-title p {
+            font-size: 1.1rem;
+            color: var(--text-light);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Role Tabs */
+        .role-tabs {
+            background: var(--bg-light);
+        }
+        
+        .nav-pills .nav-link {
+            background: transparent;
+            border: 2px solid transparent;
+            color: var(--text-dark);
+            font-weight: 600;
+            padding: 15px 30px;
+            margin: 0 10px;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-pills .nav-link:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        
+        .nav-pills .nav-link.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+        
+        /* Project Cards */
+        .project-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+        }
+        
+        .project-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        
+        .project-card-body {
+            padding: 25px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .project-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+        
+        .project-description {
+            color: var(--text-light);
+            margin-bottom: 20px;
+            flex-grow: 1;
+            line-height: 1.6;
+        }
+        
+        .tech-tags {
+            margin-bottom: 20px;
+        }
+        
+        .tech-tag {
+            display: inline-block;
+            background: var(--bg-light);
+            color: var(--primary-color);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin: 2px;
+        }
+        
+        .project-links {
+            margin-top: auto;
+        }
+        
+        .project-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            margin-right: 15px;
+        }
+        
+        .project-links a:hover {
+            color: var(--secondary-color);
+        }
+        
+        /* Ensure equal height columns */
+        .tab-pane .row {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        
+        .tab-pane .col-lg-4,
+        .tab-pane .col-md-6 {
+            display: flex;
+            margin-bottom: 30px;
+        }
+        
+        /* Skills Section Enhancement */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+        
+        .skill-category {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .skill-category i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+        
+        .skill-category h4 {
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+        
+        .skill-list {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+        }
+        
+        .skill-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            color: var(--text-light);
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .skill-item:last-child {
+            border-bottom: none;
+        }
+        
+        .skill-name {
+            font-weight: 500;
+        }
+        
+        .skill-level {
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            color: white;
+        }
+        
+        .skill-level.beginner {
+            background: #f59e0b;
+        }
+        
+        .skill-level.intermediate {
+            background: #3b82f6;
+        }
+        
+        .skill-level.expert {
+            background: #10b981;
+        }
+        
+        /* Contact Section */
+        .contact-section {
+            background: var(--bg-light);
+        }
+        
+        [data-theme="dark"] .contact-section {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        }
+        
+        .contact-info {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        [data-theme="dark"] .contact-info {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .contact-item i {
+            width: 50px;
+            height: 50px;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin-right: 20px;
+        }
+        
+        /* Footer */
+        .footer {
+            background: var(--text-dark);
+            color: white;
+            text-align: center;
+            padding: 40px 0;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .nav-pills .nav-link {
+                margin: 5px;
+                padding: 10px 20px;
+            }
+            
+            .skills-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tab-pane .col-lg-4,
+            .tab-pane .col-md-6 {
+                margin-bottom: 20px;
+            }
+            
+            .project-card-body {
+                padding: 20px;
+            }
+            
+            .profile-image {
+                max-width: 200px;
+                height: 200px;
+            }
+            
+            .hero .btn {
+                margin: 5px;
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .profile-image {
+                max-width: 160px;
+                height: 160px;
+            }
+        }
+        
+        /* Dark Mode Styles */
+        [data-theme="dark"] {
+            --primary-color: #3b82f6;
+            --secondary-color: #1e40af;
+            --accent-color: #60a5fa;
+            --text-dark: #8b8d90;
+            --text-light: #cbd5e1;
+            --bg-light: #1e293b;
+        }
+        
+        [data-theme="dark"] body {
+            background-color: #0f172a;
+            color: var(--text-dark);
+        }
+        
+        [data-theme="dark"] .navbar {
+            background: rgba(15, 23, 42, 0.95) !important;
+        }
+        
+        [data-theme="dark"] .hero {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+        
+        [data-theme="dark"] .section-padding {
+            background-color: #0f172a;
+        }
+        
+        [data-theme="dark"] .project-card,
+        [data-theme="dark"] .skill-category,
+        [data-theme="dark"] .contact-info {
+            background: #1e293b;
+            border: 1px solid #334155;
+        }
+        
+        [data-theme="dark"] .project-card:hover {
+            box-shadow: 0 20px 50px rgba(59, 130, 246, 0.2);
+        }
+        
+        [data-theme="dark"] .tech-tag {
+            background: #334155;
+            color: var(--accent-color);
+        }
+        
+        [data-theme="dark"] .footer {
+            background: #020617;
+        }
+        
+        /* Improved contrast for About section */
+        .about-text {
+            color: var(--text-dark);
+            font-weight: 500;
+            line-height: 1.8;
+            font-size: 1.1rem;
+        }
+        
+        .about-text p {
+            margin-bottom: 1.5rem;
+            color: #374151;
+            font-weight: 500;
+        }
+        
+        .feature-item {
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .feature-item h5 {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .feature-item .small {
+            color: #4b5563;
+            font-weight: 500;
+        }
+        
+        /* Section titles better contrast */
+        .section-title h2 {
+            color: #1f2937;
+            font-weight: 700;
+        }
+        
+        .section-title p {
+            color: #4b5563;
+            font-weight: 500;
+        }
+        
+        /* Project cards better contrast */
+        .project-title {
+            color: #1f2937;
+        }
+        
+        .project-description {
+            color: #4b5563;
+            font-weight: 500;
+        }
+        
+        /* Profile image styling */
+        .profile-image {
+            max-width: 250px;
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border: 4px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .profile-image:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        [data-theme="dark"] .profile-image {
+            border: 4px solid rgba(59, 130, 246, 0.3);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+        }
+        
+        [data-theme="dark"] .profile-image:hover {
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Dark mode text colors */
+        [data-theme="dark"] .section-title h2 {
+            color: #ffffff !important;
+        }
+        
+        [data-theme="dark"] .section-title p {
+            color: #d1d5db !important;
+        }
+        
+        [data-theme="dark"] .project-card-body h5 {
+            color: #ffffff !important;
+        }
+        
+        [data-theme="dark"] .project-description {
+            color: #d1d5db !important;
+        }
+        
+        [data-theme="dark"] .contact-info h5 {
+            color: #ffffff !important;
+        }
+        
+        [data-theme="dark"] .contact-info p {
+            color: #d1d5db !important;
+        }
+        
+        [data-theme="dark"] .contact-section h4 {
+            color: #ffffff !important;
+        }
+        
+        [data-theme="dark"] .contact-section p {
+            color: #d1d5db !important;
+        }
+        
+        [data-theme="dark"] .feature-item h5 {
+            color: #ffffff !important;
+        }
+        
+        [data-theme="dark"] .feature-item .small {
+            color: #d1d5db !important;
+        }
+        
+        [data-theme="dark"] .about-text p {
+            color: #d1d5db !important;
+        }
+        
+        /* Floating profile image in top right */
+        .floating-profile {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            width: 120px;
+            height: 200px;
+            border-radius: 12px;
+            border: 3px solid var(--primary-color);
+            object-fit: cover;
+            z-index: 1050;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .floating-profile.scrolled {
+            width: 30px;
+            height: 50px;
+            border-radius: 6px;
+        }
+        
+        .floating-profile:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(37, 99, 235, 0.4);
+        }
+        
+        [data-theme="dark"] .floating-profile {
+            border-color: var(--accent-color);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        [data-theme="dark"] .floating-profile:hover {
+            box-shadow: 0 6px 25px rgba(59, 130, 246, 0.4);
+        }
+        
+        /* Skills Carousel */
+        .skills-carousel-container {
+            overflow-x: auto;
+            overflow-y: hidden;
+            width: 100%;
+            position: relative;
+            margin: 0 auto;
+            padding: 20px 0; /* Add padding for hover effect */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        
+        .skills-carousel-container::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+        
+        .skills-carousel {
+            display: flex;
+            animation: skillsSlide 25s linear infinite;
+            gap: 2rem;
+            width: calc(200%);
+            cursor: grab;
+        }
+        
+        .skills-carousel:active {
+            cursor: grabbing;
+        }
+        
+        .skills-carousel:hover {
+            animation-play-state: paused;
+        }
+        
+        @keyframes skillsSlide {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+        
+        .skill-category {
+            min-width: 300px;
+            flex-shrink: 0;
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .skill-category:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            z-index: 10;
+        }
+        
+        [data-theme="dark"] .skill-category {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .skill-category i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .skill-category h4 {
+            color: var(--text-dark);
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+        
+        [data-theme="dark"] .skill-category h4 {
+            color: white;
+        }
+        
+        .skill-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .skill-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        [data-theme="dark"] .skill-item {
+            border-bottom-color: rgba(255,255,255,0.1);
+        }
+        
+        .skill-item:last-child {
+            border-bottom: none;
+        }
+        
+        .skill-name {
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+        
+        [data-theme="dark"] .skill-name {
+            color: white;
+        }
+        
+        .skill-level {
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .skill-level.expert {
+            background: #10b981;
+            color: white;
+        }
+        
+        .skill-level.intermediate {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .skill-level.beginner {
+            background: #6366f1;
+            color: white;
+        }
+        
+        /* Popup Styling */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: none;
+            backdrop-filter: blur(5px);
+        }
+        
+        .help-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            display: none;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        [data-theme="dark"] .help-popup {
+            background: #1f2937;
+            color: white;
+        }
+        
+        .help-popup h4 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        [data-theme="dark"] .help-popup h4 {
+            color: #60a5fa;
+        }
+        
+        .help-popup p {
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        [data-theme="dark"] .help-popup p {
+            color: #d1d5db;
+        }
+        
+        .popup-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .popup-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .popup-btn.primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .popup-btn.primary:hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        
+        .popup-btn.secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        
+        .popup-btn.secondary:hover {
+            background: #d1d5db;
+        }
+        
+        [data-theme="dark"] .popup-btn.secondary {
+            background: #374151;
+            color: #d1d5db;
+        }
+        
+        [data-theme="dark"] .popup-btn.secondary:hover {
+            background: #4b5563;
+        }
+        
+        /* Popup Styles */
+        .help-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            z-index: 9999;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            display: none;
+        }
+        
+        [data-theme="dark"] .help-popup {
+            background: #1f2937;
+            color: white;
+        }
+        
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9998;
+            display: none;
+        }
+        
+        .help-popup h4 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .help-popup p {
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .popup-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .popup-btn {
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .popup-btn.primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .popup-btn.secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        
+        [data-theme="dark"] .popup-btn.secondary {
+            background: #374151;
+            color: white;
+        }
+        
+        /* Scroll Progress Bar */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 4px;
+            background: var(--primary-color);
+            z-index: 9999;
+            transition: width 0.3s ease;
+        }
+        
+        [data-theme="dark"] .scroll-progress {
+            background: var(--accent-color);
+        }
+        
+        [data-theme="dark"] .btn-download-cv {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        [data-theme="dark"] .btn-download-cv:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+        }
+        
+        /* Additional utilities for card consistency */
+        .h-100 {
+            height: 100% !important;
+        }
+        
+        .d-flex-column {
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        
+        .flex-grow-1 {
+            flex-grow: 1 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Scroll Progress Bar -->
+    <div class="scroll-progress" id="scrollProgress"></div>
+    
+    <!-- Floating Profile Image -->
+    <img src="DSC_0752.JPG" alt="Profile" class="floating-profile" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+    
+    <!-- Help Popup -->
+    <div class="popup-overlay" id="popupOverlay"></div>
+    <div class="help-popup" id="helpPopup">
+        <h4>👋 Halo kak!</h4>
+        <p>Mungkin ada yang bisa dibantu? Anda dapat kirim pesan ataupun email langsung kak. Terimakasih atas kunjungannya🙏🏽</p>
+        <div class="popup-buttons">
+            <button class="popup-btn primary" onclick="openWhatsApp()">WhatsApp</button>
+            <button class="popup-btn primary" onclick="openEmail()">Email</button>
+            <button class="popup-btn secondary" onclick="closePopup()">Tutup</button>
+        </div>
+    </div>
+    
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#home">Aris Portfolio</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#home">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#projects">Projects</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#skills">Skills</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <div class="hero-content">
+                        <h1>Hi, I'm <span class="text-warning">Aris</span></h1>
+                        <p class="lead">Quality Assurance Engineer & Data Scientist</p>
+                        <p class="mb-4">Passionate about ensuring software quality and extracting insights from data to drive business decisions.</p>
+                        <a href="#projects" class="btn btn-primary-custom me-3">View My Work</a>
+                        <a href="#contact" class="btn btn-outline-light me-3">Get In Touch</a>
+                        <a href="CV Aris 2025.pdf" class="btn btn-download-cv" download="CV_Aris_2025.pdf">
+                            <i class="fas fa-download me-2"></i>Download CV
+                        </a>
+                        
+                        <div class="social-icons mt-4">
+                            <a href="https://github.com/foxrider1998" target="_blank"><i class="fab fa-github"></i></a>
+                            <a href="https://www.instagram.com/rizz4fun/" target="_blank"><i class="fab fa-instagram"></i></a>
+                            <a href="https://m.facebook.com/arisperma.2019" target="_blank"><i class="fab fa-facebook"></i></a>
+                            <a href="https://api.whatsapp.com/send?phone=6285743019186&text=Hello%20Aris!" target="_blank"><i class="fab fa-whatsapp"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <!-- Hero image space - using floating profile instead -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="section-padding">
+        <div class="container">
+            <div class="section-title">
+                <h2>About Me</h2>
+                <p>Get to know more about my background and expertise</p>
+            </div>
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h3 style="color: var(--primary-color); font-weight: 700; margin-bottom: 25px;">Professional Journey</h3>
+                    <div class="about-text">
+                        <p>I'm Aris, a 24-year-old technology enthusiast from Indonesia with a passion for Quality Assurance and Machine Learning. My journey in tech has led me to develop expertise across multiple domains, from ensuring software quality to building predictive models.</p>
+                        
+                        <p>I'm currently expanding my knowledge in emerging technologies and focusing on career growth in QA Engineering and Data Science. My experience spans automated testing, API testing, web automation, and machine learning model development.</p>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="feature-item">
+                                <h5><i class="fas fa-bug me-2"></i>QA Testing</h5>
+                                <p class="small mb-0">Automated & Manual Testing</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="feature-item">
+                                <h5><i class="fas fa-chart-line me-2"></i>Data Science</h5>
+                                <p class="small mb-0">ML Models & Analytics</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="feature-item">
+                                <h5><i class="fas fa-mobile-alt me-2"></i>App Development</h5>
+                                <p class="small mb-0">React Native Applications</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="feature-item">
+                                <h5><i class="fas fa-microchip me-2"></i>IoT Projects</h5>
+                                <p class="small mb-0">ESP32 & Sensor Systems</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="text-center">
+                        <img src="DSC_0752.JPG" alt="About Me" class="img-fluid" style="max-width: 400px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Projects Section with Role Tabs -->
+    <section id="projects" class="section-padding role-tabs">
+        <div class="container">
+            <div class="section-title">
+                <h2>My Projects</h2>
+                <p>Explore my work across different technology domains</p>
+            </div>
+            
+            <!-- Role Navigation -->
+            <ul class="nav nav-pills justify-content-center mb-5" id="roleTabs">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#qa-projects">QA Engineer</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#data-science-projects">Data Science</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#app-development-projects">App Development</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#iot-projects">IoT Projects</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#automation-projects">Automation</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#web-development-projects">Web Development</button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- QA Engineer Projects -->
+                <div class="tab-pane fade show active" id="qa-projects">
+                    <div class="row">
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://github.com/foxrider1998/QA-fazztrack/blob/newman/Cuplikan%20layar%20dari%202022-11-22%2013-33-16.png?raw=true" alt="API Testing">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">API Testing with Postman & Newman</h5>
+                                    <p class="project-description">Comprehensive API testing suite using Postman collections and Newman for automated testing in CI/CD pipelines.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Postman</span>
+                                        <span class="tech-tag">Newman</span>
+                                        <span class="tech-tag">API Testing</span>
+                                        <span class="tech-tag">CI/CD</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/QA-fazztrack/tree/newman" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://github.com/foxrider1998/QA-fazztrack/raw/demoqa/runned.png?raw=true" alt="Web Testing">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">DemoQA Web Testing</h5>
+                                    <p class="project-description">Automated web testing project covering various UI elements and interactions on DemoQA platform with comprehensive test scenarios.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Selenium</span>
+                                        <span class="tech-tag">Web Testing</span>
+                                        <span class="tech-tag">Automation</span>
+                                        <span class="tech-tag">UI Testing</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/QA-fazztrack/tree/demoqa" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://github.com/foxrider1998/foxrider1998.github.io/blob/main/QA_tokped_selenium_python.png?raw=true" alt="Tokopedia Testing">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Tokopedia E2E Testing</h5>
+                                    <p class="project-description">End-to-end testing automation for Tokopedia e-commerce platform using Python and Selenium with comprehensive coverage.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Python</span>
+                                        <span class="tech-tag">Selenium</span>
+                                        <span class="tech-tag">E2E Testing</span>
+                                        <span class="tech-tag">E-commerce</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/python_tokped_selenium" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop" alt="Playwright Testing">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Playwright Automation Testing</h5>
+                                    <p class="project-description">Modern end-to-end testing framework using Playwright for cross-browser automation and comprehensive web testing scenarios.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Playwright</span>
+                                        <span class="tech-tag">JavaScript</span>
+                                        <span class="tech-tag">Cross-browser</span>
+                                        <span class="tech-tag">E2E Testing</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=200&fit=crop" alt="WDIO Testing">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">WebdriverIO Test Suite</h5>
+                                    <p class="project-description">Advanced automation testing framework using WebdriverIO for comprehensive web and mobile application testing with BDD approach.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">WebdriverIO</span>
+                                        <span class="tech-tag">JavaScript</span>
+                                        <span class="tech-tag">BDD</span>
+                                        <span class="tech-tag">Mobile Testing</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Science Projects -->
+                <div class="tab-pane fade" id="data-science-projects">
+                    <div class="row">
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://raw.githubusercontent.com/foxrider1998/foxrider1998.github.io/main/ML_BankLoan.png" alt="Bank Loan Prediction">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Bank Loan Prediction</h5>
+                                    <p class="project-description">Machine learning model to predict bank loan approvals using various customer features and financial indicators with high accuracy.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Python</span>
+                                        <span class="tech-tag">Scikit-learn</span>
+                                        <span class="tech-tag">Streamlit</span>
+                                        <span class="tech-tag">Classification</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://foxrider1998-data-science-bank-loan-prediction-3m6h1v.streamlit.app/" target="_blank"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://github.com/foxrider1998/foxrider1998.github.io/blob/main/ML_kelulusan.png?raw=true" alt="Student Graduation">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Student Graduation Prediction</h5>
+                                    <p class="project-description">Predictive model to determine student graduation likelihood based on academic performance and demographic factors.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Python</span>
+                                        <span class="tech-tag">Machine Learning</span>
+                                        <span class="tech-tag">Data Analysis</span>
+                                        <span class="tech-tag">Education</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://foxrider1998-prediksi-kelulusansiswa-siswa-kelulusan-150wil.streamlit.app/" target="_blank"><i class="fas fa-external-link-alt"></i> Live Demo</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://github.com/foxrider1998/foxrider1998.github.io/blob/main/ML_Paper_rock_scissor.png?raw=true" alt="Rock Paper Scissors">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Rock Paper Scissors AI</h5>
+                                    <p class="project-description">Computer vision model for hand gesture recognition to play rock-paper-scissors game using deep learning techniques.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">TensorFlow</span>
+                                        <span class="tech-tag">Computer Vision</span>
+                                        <span class="tech-tag">CNN</span>
+                                        <span class="tech-tag">Image Classification</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://colab.research.google.com/drive/1vlwIEbd3jJgB_jcu7qEtf0lPO60FPlzo?hl=id" target="_blank"><i class="fas fa-external-link-alt"></i> Colab</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://github.com/foxrider1998/foxrider1998.github.io/blob/main/ML_bpjs_casexcost.png?raw=true" alt="BPJS Analysis">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">BPJS Healthcare Cost Analysis</h5>
+                                    <p class="project-description">Data analysis and cost prediction for Indonesian healthcare system (BPJS) using statistical modeling and data visualization.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Python</span>
+                                        <span class="tech-tag">Data Analysis</span>
+                                        <span class="tech-tag">Statistics</span>
+                                        <span class="tech-tag">Healthcare</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://colab.research.google.com/drive/1hgvZMF4r3jfoBs_E_aSDW1q5hQx5WY-b" target="_blank"><i class="fas fa-external-link-alt"></i> Colab</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- App Development Projects -->
+                <div class="tab-pane fade" id="app-development-projects">
+                    <div class="row">
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://github.com/foxrider1998/ButrollManagement/blob/master/images5.jpg?raw=true" alt="Butroll Management">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Butroll Management System (BMS)</h5>
+                                    <p class="project-description">React Native business management application with comprehensive features for inventory, sales, and customer management with modern UI.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">React Native</span>
+                                        <span class="tech-tag">JavaScript</span>
+                                        <span class="tech-tag">Mobile App</span>
+                                        <span class="tech-tag">Business Management</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/ButrollManagement" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=200&fit=crop" alt="Mobile App">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Cross-Platform Mobile Apps</h5>
+                                    <p class="project-description">Development of cross-platform mobile applications using React Native with focus on user experience and performance optimization.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">React Native</span>
+                                        <span class="tech-tag">Expo</span>
+                                        <span class="tech-tag">Redux</span>
+                                        <span class="tech-tag">Native Modules</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998" target="_blank"><i class="fab fa-github"></i> Profile</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=200&fit=crop" alt="Laravel Web">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Laravel Web Application</h5>
+                                    <p class="project-description">Laravel practice project demonstrating PHP framework capabilities with MVC architecture and database management.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Laravel</span>
+                                        <span class="tech-tag">PHP</span>
+                                        <span class="tech-tag">MVC</span>
+                                        <span class="tech-tag">Database</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/weblarav" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=200&fit=crop" alt="API Project">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">API Komentar</h5>
+                                    <p class="project-description">PHP REST API for comment system with live deployment on Vercel, providing endpoints for comment management and user interactions.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">PHP</span>
+                                        <span class="tech-tag">REST API</span>
+                                        <span class="tech-tag">Vercel</span>
+                                        <span class="tech-tag">JSON</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/apiKomentar" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                        <a href="https://api-komentar.vercel.app" target="_blank"><i class="fas fa-external-link-alt"></i> Live</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=400&h=200&fit=crop" alt="HTML CSS Project">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">HTML & CSS Learning Projects</h5>
+                                    <p class="project-description">Collection of web development projects from Progate learning path, focusing on HTML, CSS, and JavaScript fundamentals.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">HTML</span>
+                                        <span class="tech-tag">CSS</span>
+                                        <span class="tech-tag">JavaScript</span>
+                                        <span class="tech-tag">Responsive</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/html-progate" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400&h=200&fit=crop" alt="Kasir App">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Kasir Gaza - POS System</h5>
+                                    <p class="project-description">Point of Sale system project for K-Net with JavaScript implementation for retail management and transaction processing.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">JavaScript</span>
+                                        <span class="tech-tag">POS System</span>
+                                        <span class="tech-tag">Retail</span>
+                                        <span class="tech-tag">Transaction</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/kasirgaza" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IoT Projects -->
+                <div class="tab-pane fade" id="iot-projects">
+                    <div class="row">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1518432031352-d6fc5c10da5a?w=400&h=200&fit=crop" alt="ESP32 IoT">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">ESP32 IoT Tracking System</h5>
+                                    <p class="project-description">IoT-based tracking system using ESP32 microcontroller for real-time location monitoring and data collection with sensor integration.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">ESP32</span>
+                                        <span class="tech-tag">Arduino IDE</span>
+                                        <span class="tech-tag">WiFi/Bluetooth</span>
+                                        <span class="tech-tag">Sensors</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/trackwithesp32" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=200&fit=crop" alt="IoT Sensors">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Smart Sensor Networks</h5>
+                                    <p class="project-description">Development of IoT sensor networks for environmental monitoring and data collection with cloud integration.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Microcontrollers</span>
+                                        <span class="tech-tag">Sensor Integration</span>
+                                        <span class="tech-tag">Data Logging</span>
+                                        <span class="tech-tag">Cloud IoT</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998" target="_blank"><i class="fab fa-github"></i> Profile</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=400&h=200&fit=crop" alt="IoT Automation">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">IoT Home Automation</h5>
+                                    <p class="project-description">Smart home automation system using IoT devices for remote control and monitoring of household appliances.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Home Automation</span>
+                                        <span class="tech-tag">Remote Control</span>
+                                        <span class="tech-tag">Smart Devices</span>
+                                        <span class="tech-tag">Mobile App Control</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998" target="_blank"><i class="fab fa-github"></i> Profile</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Automation Projects -->
+                <div class="tab-pane fade" id="automation-projects">
+                    <div class="row">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="project-card">
+                                <img src="https://github.com/foxrider1998/foxrider1998.github.io/blob/main/QA_Tokopedia_uipath.png?raw=true" alt="UiPath Automation">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">UiPath RPA - Tokopedia</h5>
+                                    <p class="project-description">Robotic Process Automation for Tokopedia platform using UiPath to automate repetitive testing and business processes.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">UiPath</span>
+                                        <span class="tech-tag">RPA</span>
+                                        <span class="tech-tag">Process Automation</span>
+                                        <span class="tech-tag">E-commerce</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/Uipath" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=400&h=200&fit=crop" alt="Test Automation">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Automated Test Framework</h5>
+                                    <p class="project-description">Comprehensive test automation framework with cross-browser testing capabilities and detailed reporting systems.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Selenium</span>
+                                        <span class="tech-tag">Python</span>
+                                        <span class="tech-tag">Test Framework</span>
+                                        <span class="tech-tag">CI/CD</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998" target="_blank"><i class="fab fa-github"></i> Profile</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=200&fit=crop" alt="Process Automation">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Business Process Automation</h5>
+                                    <p class="project-description">Automation solutions for business processes including data entry, report generation, and workflow optimization.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Process Automation</span>
+                                        <span class="tech-tag">Workflow</span>
+                                        <span class="tech-tag">Data Processing</span>
+                                        <span class="tech-tag">Efficiency</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998" target="_blank"><i class="fab fa-github"></i> Profile</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Web Development Projects -->
+                <div class="tab-pane fade" id="web-development-projects">
+                    <div class="row">
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400&h=200&fit=crop" alt="Kasir App">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">Kasir Gaza - POS System</h5>
+                                    <p class="project-description">Point of Sale system project for K-Net with JavaScript implementation for retail management and transaction processing.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">JavaScript</span>
+                                        <span class="tech-tag">POS System</span>
+                                        <span class="tech-tag">Retail</span>
+                                        <span class="tech-tag">Transaction</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/kasirgaza" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400&h=200&fit=crop" alt="Laravel Project">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">WebLarav - Laravel Application</h5>
+                                    <p class="project-description">Full-stack web application built with Laravel framework featuring modern UI/UX and robust backend functionality.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">Laravel</span>
+                                        <span class="tech-tag">PHP</span>
+                                        <span class="tech-tag">MySQL</span>
+                                        <span class="tech-tag">Bootstrap</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/weblarav" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=200&fit=crop" alt="API Project">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">API Komentar</h5>
+                                    <p class="project-description">PHP REST API for comment system with live deployment on Vercel, providing endpoints for comment management and user interactions.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">PHP</span>
+                                        <span class="tech-tag">REST API</span>
+                                        <span class="tech-tag">Vercel</span>
+                                        <span class="tech-tag">JSON</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/apiKomentar" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                        <a href="https://api-komentar.vercel.app" target="_blank"><i class="fas fa-external-link-alt"></i> Live</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 col-md-6 d-flex">
+                            <div class="project-card">
+                                <img src="https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=400&h=200&fit=crop" alt="HTML CSS Project">
+                                <div class="project-card-body">
+                                    <h5 class="project-title">HTML & CSS Learning Projects</h5>
+                                    <p class="project-description">Collection of web development projects from Progate learning path, focusing on HTML, CSS, and JavaScript fundamentals.</p>
+                                    <div class="tech-tags">
+                                        <span class="tech-tag">HTML</span>
+                                        <span class="tech-tag">CSS</span>
+                                        <span class="tech-tag">JavaScript</span>
+                                        <span class="tech-tag">Responsive</span>
+                                    </div>
+                                    <div class="project-links">
+                                        <a href="https://github.com/foxrider1998/html-progate" target="_blank"><i class="fab fa-github"></i> Code</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Skills Section -->
+    <section id="skills" class="section-padding">
+        <div class="container">
+            <div class="section-title">
+                <h2>Skills & Technologies</h2>
+                <p>My technical expertise across different domains</p>
+            </div>
+            
+            <!-- Skills Carousel -->
+            <div class="skills-carousel-container">
+                <div class="skills-carousel">
+                    <div class="skill-category">
+                        <i class="fas fa-bug"></i>
+                        <h4>QA & Testing</h4>
+                        <ul class="skill-list">
+                            <li class="skill-item">
+                                <span class="skill-name">Manual Testing</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Automated Testing</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">API Testing</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Selenium WebDriver</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Postman & Newman</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="skill-category">
+                        <i class="fas fa-chart-line"></i>
+                        <h4>Data Science & ML</h4>
+                        <ul class="skill-list">
+                            <li class="skill-item">
+                                <span class="skill-name">Python</span>
+                                <span class="skill-level expert">Expert</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Machine Learning</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Data Analysis</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Scikit-learn</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">TensorFlow</span>
+                                <span class="skill-level beginner">Beginner</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="skill-category">
+                        <i class="fas fa-code"></i>
+                        <h4>Programming</h4>
+                        <ul class="skill-list">
+                            <li class="skill-item">
+                                <span class="skill-name">JavaScript</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">PHP</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Laravel</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">React Native</span>
+                                <span class="skill-level beginner">Beginner</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">SQL</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="skill-category">
+                        <i class="fas fa-tools"></i>
+                        <h4>Tools & Platforms</h4>
+                        <ul class="skill-list">
+                            <li class="skill-item">
+                                <span class="skill-name">Git & GitHub</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Docker</span>
+                                <span class="skill-level beginner">Beginner</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Linux</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">VS Code</span>
+                                <span class="skill-level expert">Expert</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Jupyter</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Duplicate for seamless loop -->
+                    <div class="skill-category">
+                        <i class="fas fa-bug"></i>
+                        <h4>QA & Testing</h4>
+                        <ul class="skill-list">
+                            <li class="skill-item">
+                                <span class="skill-name">Manual Testing</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Automated Testing</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">API Testing</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Selenium WebDriver</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Postman & Newman</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="skill-category">
+                        <i class="fas fa-chart-line"></i>
+                        <h4>Data Science & ML</h4>
+                        <ul class="skill-list">
+                            <li class="skill-item">
+                                <span class="skill-name">Python</span>
+                                <span class="skill-level expert">Expert</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Machine Learning</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Data Analysis</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">Scikit-learn</span>
+                                <span class="skill-level intermediate">Intermediate</span>
+                            </li>
+                            <li class="skill-item">
+                                <span class="skill-name">TensorFlow</span>
+                                <span class="skill-level beginner">Beginner</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Contact Section -->
+    <section id="contact" class="section-padding contact-section">
+        <div class="container">
+            <div class="section-title">
+                <h2>Get In Touch</h2>
+                <p>Let's discuss opportunities and collaborations</p>
+            </div>
+            
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="contact-info">
+                        <div class="row">
+                            <div class="col-md-6">                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <div>
+                                <h5>Email</h5>
+                                <p>areskretindo@gmail.com</p>
+                            </div>
+                        </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="contact-item">
+                                    <i class="fas fa-phone"></i>
+                                    <div>
+                                        <h5>Phone</h5>
+                                        <p>+62 857 4301 9186</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="contact-item">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <div>
+                                        <h5>Location</h5>
+                                        <p>Indonesia</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="contact-item">
+                                    <i class="fab fa-github"></i>
+                                    <div>
+                                        <h5>GitHub</h5>
+                                        <p>github.com/foxrider1998</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <h4>Ready to collaborate?</h4>
+                            <p class="mb-4">I'm always interested in new opportunities and challenging projects.</p>
+                            <a href="https://api.whatsapp.com/send?phone=6285743019186&text=Hello%20Aris!%20I'm%20interested%20in%20your%20profile." class="btn btn-primary-custom" target="_blank">
+                                <i class="fab fa-whatsapp me-2"></i>Send Message
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Aris Portfolio. All rights reserved.</p>
+            <p>Quality Assurance Engineer & Data Scientist</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="script.js"></script>
+    
+    <!-- Custom JS -->
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Navbar background on scroll
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.style.background = 'rgba(255, 255, 255, 0.98)';
+                navbar.style.boxShadow = '0 2px 30px rgba(0, 0, 0, 0.15)';
+            } else {
+                navbar.style.background = 'rgba(255, 255, 255, 0.95)';
+                navbar.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.1)';
+            }
+        });
+
+        // Active navigation link
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+            const floatingProfile = document.querySelector('.floating-profile');
+            
+            // Update scroll progress
+            const scrolled = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+            document.getElementById('scrollProgress').style.width = scrolled + '%';
+            
+            // Resize floating profile based on scroll position
+            if (window.scrollY > 100) {
+                if (floatingProfile) {
+                    floatingProfile.classList.add('scrolled');
+                }
+            } else {
+                if (floatingProfile) {
+                    floatingProfile.classList.remove('scrolled');
+                }
+            }
+            
+            let currentSection = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 100;
+                const sectionHeight = section.clientHeight;
+                if (window.scrollY >= sectionTop && window.scrollY < sectionTop + sectionHeight) {
+                    currentSection = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${currentSection}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Collapse navbar on mobile after clicking a link
+        document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+            link.addEventListener('click', function() {
+                const navbarToggler = document.querySelector('.navbar-toggler');
+                const navbarCollapse = document.querySelector('.navbar-collapse');
+                
+                if (window.innerWidth < 992 && navbarCollapse.classList.contains('show')) {
+                    navbarToggler.click();
+                }
+            });
+        });
+        
+        // Inactivity Popup
+        let inactivityTimer;
+        let popupCooldown = false;
+        
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            if (!popupCooldown) {
+                inactivityTimer = setTimeout(() => {
+                    showHelpPopup();
+                }, 30000); // 10 seconds
+            }
+        }
+        
+        function showHelpPopup() {
+            document.getElementById('popupOverlay').style.display = 'block';
+            document.getElementById('helpPopup').style.display = 'block';
+            popupCooldown = true;
+            
+            // Reset cooldown after 30 seconds so popup can show again
+            setTimeout(() => {
+                popupCooldown = false;
+                resetInactivityTimer();
+            }, 100000);
+        }
+        
+        function closePopup() {
+            document.getElementById('popupOverlay').style.display = 'none';
+            document.getElementById('helpPopup').style.display = 'none';
+            // Reset timer after closing popup
+            resetInactivityTimer();
+        }
+        
+        function openWhatsApp() {
+            window.open('https://api.whatsapp.com/send?phone=6285743019186&text=Hello%20Aris!%20I%27m%20interested%20in%20your%20profile.', '_blank');
+            closePopup();
+        }
+        
+        function openEmail() {
+            window.open('mailto:areskretindo@gmail.com?subject=Hello%20from%20Portfolio&body=Hi%20Aris,%20I%20visited%20your%20portfolio%20and%20would%20like%20to%20connect.', '_blank');
+            closePopup();
+        }
+        
+        // Track user activity
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(event => {
+            document.addEventListener(event, resetInactivityTimer, true);
+        });
+        
+        // Start the timer when page loads
+        resetInactivityTimer();
+        
+        // Close popup when clicking overlay
+        document.getElementById('popupOverlay').addEventListener('click', closePopup);
+        
+        // Skills Carousel Manual Scroll
+        const skillsCarousel = document.querySelector('.skills-carousel');
+        const skillsContainer = document.querySelector('.skills-carousel-container');
+        let isScrolling = false;
+        
+        if (skillsContainer && skillsCarousel) {
+            // Enable horizontal scroll with mouse wheel
+            skillsContainer.addEventListener('wheel', function(e) {
+                if (e.deltaY !== 0) {
+                    e.preventDefault();
+                    skillsContainer.scrollLeft += e.deltaY;
+                }
+            });
+            
+            // Pause animation when manually scrolling
+            skillsContainer.addEventListener('mouseenter', function() {
+                skillsCarousel.style.animationPlayState = 'paused';
+            });
+            
+            skillsContainer.addEventListener('mouseleave', function() {
+                if (!isScrolling) {
+                    skillsCarousel.style.animationPlayState = 'running';
+                }
+            });
+            
+            // Touch/drag support for mobile
+            let isDragging = false;
+            let startX;
+            let scrollStart;
+            
+            skillsContainer.addEventListener('touchstart', function(e) {
+                isDragging = true;
+                startX = e.touches[0].clientX;
+                scrollStart = skillsContainer.scrollLeft;
+                skillsCarousel.style.animationPlayState = 'paused';
+            });
+            
+            skillsContainer.addEventListener('touchmove', function(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                const currentX = e.touches[0].clientX;
+                const diff = startX - currentX;
+                skillsContainer.scrollLeft = scrollStart + diff;
+            });
+            
+            skillsContainer.addEventListener('touchend', function() {
+                isDragging = false;
+                setTimeout(() => {
+                    skillsCarousel.style.animationPlayState = 'running';
+                }, 1000);
+            });
+        }
+        
+        // Google Analytics (replace with your tracking ID)
+        // gtag('config', 'GA_TRACKING_ID');
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://foxrider1998.github.io/sitemap.xml
+
+# Disallow unnecessary files
+Disallow: /.git/
+Disallow: /.github/
+Disallow: /deploy.sh
+Disallow: /*.md
+
+# Allow important pages
+Allow: /index.html
+Allow: /style.css
+Allow: /script.js
