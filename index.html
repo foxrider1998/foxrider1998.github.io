@@ -401,6 +401,12 @@
             height: 200px;
             object-fit: cover;
             flex-shrink: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0;
+        }
+        
+        .project-card img[src*="data:image"] {
+            border-radius: 0;
         }
         
         .project-card-body {
@@ -1161,18 +1167,82 @@
             box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
         }
         
-        /* Additional utilities for card consistency */
-        .h-100 {
-            height: 100% !important;
+        /* Analytics Dashboard Styles */
+        .analytics-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1049;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
+            transition: all 0.3s ease;
         }
         
-        .d-flex-column {
-            display: flex !important;
-            flex-direction: column !important;
+        .analytics-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(37, 99, 235, 0.4);
         }
         
-        .flex-grow-1 {
-            flex-grow: 1 !important;
+        .analytics-dashboard {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            width: 300px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 1048;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        [data-theme="dark"] .analytics-dashboard {
+            background: #1f2937;
+            color: white;
+            border: 1px solid #374151;
+        }
+        
+        .analytics-dashboard h5 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .analytics-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        [data-theme="dark"] .analytics-item {
+            border-bottom-color: #374151;
+        }
+        
+        .analytics-item:last-child {
+            border-bottom: none;
+        }
+        
+        .analytics-label {
+            font-weight: 500;
+            color: #4b5563;
+        }
+        
+        [data-theme="dark"] .analytics-label {
+            color: #d1d5db;
+        }
+        
+        .analytics-value {
+            font-weight: 600;
+            color: var(--primary-color);
         }
     </style>
 </head>
@@ -1183,6 +1253,47 @@
     
     <!-- Floating Profile Image -->
     <img src="DSC_0752.JPG" alt="Profile" class="floating-profile" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+    
+    <!-- Analytics Dashboard -->
+    <button class="analytics-toggle" onclick="toggleAnalytics()" title="View Analytics">
+        <i class="fas fa-chart-bar"></i>
+    </button>
+    
+    <div class="analytics-dashboard" id="analyticsDashboard">
+        <h5><i class="fas fa-analytics"></i> Portfolio Analytics</h5>
+        <div class="analytics-item">
+            <span class="analytics-label">Total Visitors:</span>
+            <span class="analytics-value" id="totalVisitors">0</span>
+        </div>
+        <div class="analytics-item">
+            <span class="analytics-label">Page Interactions:</span>
+            <span class="analytics-value" id="totalInteractions">0</span>
+        </div>
+        <div class="analytics-item">
+            <span class="analytics-label">Current Session:</span>
+            <span class="analytics-value" id="currentSession">Active</span>
+        </div>
+        <div class="analytics-item">
+            <span class="analytics-label">Last Visit:</span>
+            <span class="analytics-value" id="lastVisit">Now</span>
+        </div>
+        <div class="analytics-item">
+            <span class="analytics-label">Device Type:</span>
+            <span class="analytics-value" id="deviceType">-</span>
+        </div>
+        <div class="analytics-item">
+            <span class="analytics-label">Browser:</span>
+            <span class="analytics-value" id="browserType">-</span>
+        </div>
+        <div style="text-align: center; margin-top: 15px;">
+            <button class="btn btn-sm btn-primary" onclick="exportAnalytics()" style="margin-right: 5px;">
+                <i class="fas fa-download"></i> Export
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="clearAnalytics()">
+                <i class="fas fa-trash"></i> Clear
+            </button>
+        </div>
+    </div>
     
     <!-- Help Popup -->
     <div class="popup-overlay" id="popupOverlay"></div>
@@ -1235,6 +1346,14 @@
                             <a href="https://www.instagram.com/rizz4fun/" target="_blank"><i class="fab fa-instagram"></i></a>
                             <a href="https://m.facebook.com/arisperma.2019" target="_blank"><i class="fab fa-facebook"></i></a>
                             <a href="https://api.whatsapp.com/send?phone=6285743019186&text=Hello%20Aris!" target="_blank"><i class="fab fa-whatsapp"></i></a>
+                        </div>
+                        
+                        <!-- Visitor Counter -->
+                        <div class="visitor-counter mt-3">
+                            <small style="color: rgba(255,255,255,0.8);">
+                                <i class="fas fa-eye me-1"></i>
+                                Visitors: <span id="visitorCount">1</span>
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -1334,7 +1453,7 @@
                     <div class="row">
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://github.com/foxrider1998/QA-fazztrack/blob/newman/Cuplikan%20layar%20dari%202022-11-22%2013-33-16.png?raw=true" alt="API Testing">
+                                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=200&fit=crop" alt="API Testing" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">API Testing with Postman & Newman</h5>
                                     <p class="project-description">Comprehensive API testing suite using Postman collections and Newman for automated testing in CI/CD pipelines.</p>
@@ -1353,7 +1472,7 @@
                         
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://github.com/foxrider1998/QA-fazztrack/raw/demoqa/runned.png?raw=true" alt="Web Testing">
+                                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=200&fit=crop" alt="Web Testing" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">DemoQA Web Testing</h5>
                                     <p class="project-description">Automated web testing project covering various UI elements and interactions on DemoQA platform with comprehensive test scenarios.</p>
@@ -1372,7 +1491,7 @@
                         
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://github.com/foxrider1998/foxrider1998.github.io/blob/main/QA_tokped_selenium_python.png?raw=true" alt="Tokopedia Testing">
+                                <img src="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400&h=200&fit=crop" alt="Tokopedia Testing" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">Tokopedia E2E Testing</h5>
                                     <p class="project-description">End-to-end testing automation for Tokopedia e-commerce platform using Python and Selenium with comprehensive coverage.</p>
@@ -1391,7 +1510,7 @@
                         
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop" alt="Playwright Testing">
+                                <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop" alt="Playwright Testing" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">Playwright Automation Testing</h5>
                                     <p class="project-description">Modern end-to-end testing framework using Playwright for cross-browser automation and comprehensive web testing scenarios.</p>
@@ -1410,7 +1529,7 @@
                         
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=200&fit=crop" alt="WDIO Testing">
+                                <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=200&fit=crop" alt="WDIO Testing" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">WebdriverIO Test Suite</h5>
                                     <p class="project-description">Advanced automation testing framework using WebdriverIO for comprehensive web and mobile application testing with BDD approach.</p>
@@ -1434,7 +1553,7 @@
                     <div class="row">
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://raw.githubusercontent.com/foxrider1998/foxrider1998.github.io/main/ML_BankLoan.png" alt="Bank Loan Prediction">
+                                <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=200&fit=crop" alt="Bank Loan Prediction" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">Bank Loan Prediction</h5>
                                     <p class="project-description">Machine learning model to predict bank loan approvals using various customer features and financial indicators with high accuracy.</p>
@@ -1453,7 +1572,7 @@
                         
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://github.com/foxrider1998/foxrider1998.github.io/blob/main/ML_kelulusan.png?raw=true" alt="Student Graduation">
+                                <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=400&h=200&fit=crop" alt="Student Graduation" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">Student Graduation Prediction</h5>
                                     <p class="project-description">Predictive model to determine student graduation likelihood based on academic performance and demographic factors.</p>
@@ -1472,7 +1591,7 @@
                         
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://github.com/foxrider1998/foxrider1998.github.io/blob/main/ML_Paper_rock_scissor.png?raw=true" alt="Rock Paper Scissors">
+                                <img src="https://images.unsplash.com/photo-1611996575749-79a3a250f948?w=400&h=200&fit=crop" alt="Rock Paper Scissors" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">Rock Paper Scissors AI</h5>
                                     <p class="project-description">Computer vision model for hand gesture recognition to play rock-paper-scissors game using deep learning techniques.</p>
@@ -1491,7 +1610,7 @@
                         
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://github.com/foxrider1998/foxrider1998.github.io/blob/main/ML_bpjs_casexcost.png?raw=true" alt="BPJS Analysis">
+                                <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=400&h=200&fit=crop" alt="BPJS Analysis" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">BPJS Healthcare Cost Analysis</h5>
                                     <p class="project-description">Data analysis and cost prediction for Indonesian healthcare system (BPJS) using statistical modeling and data visualization.</p>
@@ -1515,7 +1634,7 @@
                     <div class="row">
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://github.com/foxrider1998/ButrollManagement/blob/master/images5.jpg?raw=true" alt="Butroll Management">
+                                <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400&h=200&fit=crop" alt="Butroll Management" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">Butroll Management System (BMS)</h5>
                                     <p class="project-description">React Native business management application with comprehensive features for inventory, sales, and customer management with modern UI.</p>
@@ -1534,7 +1653,7 @@
                         
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=200&fit=crop" alt="Mobile App">
+                                <img src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=200&fit=crop" alt="Mobile App" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">Cross-Platform Mobile Apps</h5>
                                     <p class="project-description">Development of cross-platform mobile applications using React Native with focus on user experience and performance optimization.</p>
@@ -1553,7 +1672,7 @@
                         
                         <div class="col-lg-4 col-md-6 d-flex">
                             <div class="project-card">
-                                <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=200&fit=crop" alt="Laravel Web">
+                                <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=200&fit=crop" alt="Laravel Web" onerror="handleImageError(this)">
                                 <div class="project-card-body">
                                     <h5 class="project-title">Laravel Web Application</h5>
                                     <p class="project-description">Laravel practice project demonstrating PHP framework capabilities with MVC architecture and database management.</p>
@@ -2276,7 +2395,407 @@
             });
         }
         
-        // Google Analytics (replace with your tracking ID)
+        // Image Error Handling - Fallback to placeholder when images fail to load
+        function handleImageError(img) {
+            // Create a placeholder canvas image
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 400;
+            canvas.height = 200;
+            
+            // Set background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 400, 200);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 400, 200);
+            
+            // Add text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px Poppins, Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Project Image', 200, 80);
+            
+            ctx.font = '16px Poppins, Arial, sans-serif';
+            ctx.fillText('Coming Soon', 200, 120);
+            
+            // Add icon
+            ctx.font = '40px Arial';
+            ctx.fillText('🚀', 200, 140);
+            
+            // Set the canvas as the image source
+            img.src = canvas.toDataURL();
+            img.style.objectFit = 'cover';
+        }
+        
+        // Apply error handling to all project images
+        document.addEventListener('DOMContentLoaded', function() {
+            const projectImages = document.querySelectorAll('.project-card img');
+            projectImages.forEach(img => {
+                img.addEventListener('error', function() {
+                    handleImageError(this);
+                });
+                
+                // Also handle cases where image doesn't load properly
+                img.addEventListener('load', function() {
+                    if (this.naturalWidth === 0 || this.naturalHeight === 0) {
+                        handleImageError(this);
+                    }
+                });
+            });
+        });
+        
+        // Visitor Tracking System
+        class VisitorTracker {
+            constructor() {
+                this.apiEndpoint = 'https://api.github.com/repos/foxrider1998/foxrider1998.github.io/issues';
+                this.init();
+            }
+            
+            init() {
+                this.trackPageView();
+                this.trackUserInteractions();
+                this.sendVisitorData();
+            }
+            
+            getVisitorInfo() {
+                const now = new Date();
+                const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                
+                return {
+                    timestamp: now.toISOString(),
+                    localTime: now.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+                    userAgent: navigator.userAgent,
+                    language: navigator.language,
+                    platform: navigator.platform,
+                    screenResolution: `${screen.width}x${screen.height}`,
+                    viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+                    timeZone: timeZone,
+                    referrer: document.referrer || 'Direct Visit',
+                    url: window.location.href,
+                    device: this.getDeviceType(),
+                    browser: this.getBrowser(),
+                    os: this.getOS(),
+                    connectionType: navigator.connection ? navigator.connection.effectiveType : 'Unknown',
+                    cookiesEnabled: navigator.cookieEnabled,
+                    sessionId: this.getSessionId()
+                };
+            }
+            
+            getDeviceType() {
+                const userAgent = navigator.userAgent.toLowerCase();
+                if (/tablet|ipad|playbook|silk|android(?!.*mobile)/i.test(userAgent)) {
+                    return 'Tablet';
+                } else if (/mobile|iphone|ipod|android|blackberry|opera|mini|windows\sce|palm|smartphone|iemobile/i.test(userAgent)) {
+                    return 'Mobile';
+                } else {
+                    return 'Desktop';
+                }
+            }
+            
+            getBrowser() {
+                const userAgent = navigator.userAgent;
+                if (userAgent.indexOf('Chrome') > -1) return 'Chrome';
+                if (userAgent.indexOf('Firefox') > -1) return 'Firefox';
+                if (userAgent.indexOf('Safari') > -1) return 'Safari';
+                if (userAgent.indexOf('Edge') > -1) return 'Edge';
+                if (userAgent.indexOf('Opera') > -1) return 'Opera';
+                return 'Unknown';
+            }
+            
+            getOS() {
+                const userAgent = navigator.userAgent;
+                if (userAgent.indexOf('Windows') > -1) return 'Windows';
+                if (userAgent.indexOf('Mac') > -1) return 'MacOS';
+                if (userAgent.indexOf('Linux') > -1) return 'Linux';
+                if (userAgent.indexOf('Android') > -1) return 'Android';
+                if (userAgent.indexOf('iOS') > -1) return 'iOS';
+                return 'Unknown';
+            }
+            
+            getSessionId() {
+                let sessionId = localStorage.getItem('portfolio_session_id');
+                if (!sessionId) {
+                    sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    localStorage.setItem('portfolio_session_id', sessionId);
+                }
+                return sessionId;
+            }
+            
+            trackPageView() {
+                console.log('📊 New visitor detected!');
+                console.log('🕒 Time:', new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }));
+                console.log('📱 Device:', this.getDeviceType());
+                console.log('🌐 Browser:', this.getBrowser());
+                console.log('💻 OS:', this.getOS());
+                
+                // Send to console for immediate feedback
+                const visitorInfo = this.getVisitorInfo();
+                console.table(visitorInfo);
+            }
+            
+            trackUserInteractions() {
+                // Track section visits
+                const sections = ['home', 'about', 'projects', 'skills', 'contact'];
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            console.log(`👀 Visitor viewing section: ${entry.target.id}`);
+                            this.logInteraction('section_view', entry.target.id);
+                        }
+                    });
+                }, { threshold: 0.5 });
+                
+                sections.forEach(sectionId => {
+                    const element = document.getElementById(sectionId);
+                    if (element) observer.observe(element);
+                });
+                
+                // Track tab clicks
+                document.querySelectorAll('[data-bs-toggle="pill"]').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        const target = e.target.getAttribute('data-bs-target');
+                        console.log(`🔄 Visitor switched to tab: ${target}`);
+                        this.logInteraction('tab_click', target);
+                    });
+                });
+                
+                // Track button clicks
+                document.querySelectorAll('.btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const btnText = e.target.textContent.trim();
+                        console.log(`🖱️ Visitor clicked: ${btnText}`);
+                        this.logInteraction('button_click', btnText);
+                    });
+                });
+                
+                // Track CV download
+                document.querySelectorAll('[download]').forEach(link => {
+                    link.addEventListener('click', () => {
+                        console.log('📄 CV Downloaded!');
+                        this.logInteraction('cv_download', 'CV_Aris_2025.pdf');
+                    });
+                });
+                
+                // Track external links
+                document.querySelectorAll('a[target="_blank"]').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        const url = e.target.href;
+                        console.log(`🔗 Visitor clicked external link: ${url}`);
+                        this.logInteraction('external_link', url);
+                    });
+                });
+            }
+            
+            logInteraction(type, data) {
+                const interaction = {
+                    type: type,
+                    data: data,
+                    timestamp: new Date().toISOString(),
+                    sessionId: this.getSessionId()
+                };
+                
+                // Store interactions in localStorage
+                let interactions = JSON.parse(localStorage.getItem('portfolio_interactions') || '[]');
+                interactions.push(interaction);
+                localStorage.setItem('portfolio_interactions', JSON.stringify(interactions));
+            }
+            
+            async sendVisitorData() {
+                try {
+                    const visitorInfo = this.getVisitorInfo();
+                    
+                    // Create a formatted message for notification
+                    const message = `🎯 NEW PORTFOLIO VISITOR!
+
+📅 Date: ${visitorInfo.localTime}
+📱 Device: ${visitorInfo.device}
+🌐 Browser: ${visitorInfo.browser} on ${visitorInfo.os}
+📺 Screen: ${visitorInfo.screenResolution}
+🌍 Location: ${visitorInfo.timeZone}
+🔗 Source: ${visitorInfo.referrer}
+📊 Session: ${visitorInfo.sessionId.substr(-8)}
+
+Details:
+- Language: ${visitorInfo.language}
+- Platform: ${visitorInfo.platform}
+- Connection: ${visitorInfo.connectionType}
+- Cookies: ${visitorInfo.cookiesEnabled ? 'Enabled' : 'Disabled'}
+
+---
+Portfolio Analytics System
+Generated at: ${visitorInfo.timestamp}`;
+
+                    // You can send this to various services:
+                    // 1. Email notification (using EmailJS)
+                    // 2. Telegram bot
+                    // 3. Discord webhook
+                    // 4. Custom API endpoint
+                    
+                    console.log('📧 Visitor notification prepared:', message);
+                    
+                    // Example: Send to Telegram (you'll need to add your bot token and chat ID)
+                    // this.sendToTelegram(message);
+                    
+                    // Example: Send to Discord (you'll need webhook URL)
+                    // this.sendToDiscord(message);
+                    
+                    // Store visitor count
+                    this.updateVisitorCount();
+                    
+                } catch (error) {
+                    console.error('Failed to send visitor data:', error);
+                }
+            }
+            
+            updateVisitorCount() {
+                let count = parseInt(localStorage.getItem('portfolio_visitor_count') || '0');
+                count++;
+                localStorage.setItem('portfolio_visitor_count', count);
+                console.log(`📈 Total visitors: ${count}`);
+                
+                // Update visitor counter in hero section
+                const visitorCountElement = document.getElementById('visitorCount');
+                if (visitorCountElement) {
+                    visitorCountElement.textContent = count;
+                }
+            }
+            
+            // Method to send to Telegram (add your bot credentials)
+            async sendToTelegram(message) {
+                const BOT_TOKEN = 'YOUR_BOT_TOKEN'; // Get from @BotFather
+                const CHAT_ID = 'YOUR_CHAT_ID'; // Your Telegram chat ID
+                
+                try {
+                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: CHAT_ID,
+                            text: message,
+                            parse_mode: 'HTML'
+                        })
+                    });
+                } catch (error) {
+                    console.error('Telegram notification failed:', error);
+                }
+            }
+            
+            // Method to send to Discord (add your webhook URL)
+            async sendToDiscord(message) {
+                const DISCORD_WEBHOOK = 'YOUR_DISCORD_WEBHOOK_URL';
+                
+                try {
+                    await fetch(DISCORD_WEBHOOK, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            content: '```' + message + '```',
+                            username: 'Portfolio Analytics'
+                        })
+                    });
+                } catch (error) {
+                    console.error('Discord notification failed:', error);
+                }
+            }
+            
+            // Get analytics summary
+            getAnalytics() {
+                const visitorCount = localStorage.getItem('portfolio_visitor_count') || '0';
+                const interactions = JSON.parse(localStorage.getItem('portfolio_interactions') || '[]');
+                
+                return {
+                    totalVisitors: parseInt(visitorCount),
+                    totalInteractions: interactions.length,
+                    lastVisit: new Date().toISOString(),
+                    interactions: interactions
+                };
+            }
+        }
+        
+        // Analytics Dashboard Functions
+        function toggleAnalytics() {
+            const dashboard = document.getElementById('analyticsDashboard');
+            const isVisible = dashboard.style.display === 'block';
+            dashboard.style.display = isVisible ? 'none' : 'block';
+            
+            if (!isVisible) {
+                updateAnalyticsDashboard();
+            }
+        }
+        
+        function updateAnalyticsDashboard() {
+            const analytics = tracker.getAnalytics();
+            const visitorInfo = tracker.getVisitorInfo();
+            
+            document.getElementById('totalVisitors').textContent = analytics.totalVisitors;
+            document.getElementById('totalInteractions').textContent = analytics.totalInteractions;
+            document.getElementById('currentSession').textContent = visitorInfo.sessionId.substr(-8);
+            document.getElementById('lastVisit').textContent = new Date().toLocaleTimeString('id-ID');
+            document.getElementById('deviceType').textContent = visitorInfo.device;
+            document.getElementById('browserType').textContent = visitorInfo.browser;
+        }
+        
+        function exportAnalytics() {
+            const analytics = tracker.getAnalytics();
+            const visitorInfo = tracker.getVisitorInfo();
+            
+            const exportData = {
+                summary: analytics,
+                currentVisitor: visitorInfo,
+                exportDate: new Date().toISOString()
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `portfolio-analytics-${new Date().toISOString().split('T')[0]}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            console.log('📊 Analytics exported:', exportData);
+        }
+        
+        function clearAnalytics() {
+            if (confirm('Are you sure you want to clear all analytics data?')) {
+                localStorage.removeItem('portfolio_visitor_count');
+                localStorage.removeItem('portfolio_interactions');
+                localStorage.removeItem('portfolio_session_id');
+                
+                updateAnalyticsDashboard();
+                console.log('🗑️ Analytics data cleared');
+                alert('Analytics data has been cleared!');
+            }
+        }
+        
+        // Auto-update dashboard every 10 seconds
+        setInterval(() => {
+            const dashboard = document.getElementById('analyticsDashboard');
+            if (dashboard && dashboard.style.display === 'block') {
+                updateAnalyticsDashboard();
+            }
+        }, 10000);
+        
+        // Initialize visitor tracking
+        const tracker = new VisitorTracker();
+        
+        // Update visitor count display on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const count = parseInt(localStorage.getItem('portfolio_visitor_count') || '0');
+            const visitorCountElement = document.getElementById('visitorCount');
+            if (visitorCountElement) {
+                visitorCountElement.textContent = count;
+            }
+        });
+        
+        // Make analytics accessible globally for debugging
+        window.getPortfolioAnalytics = () => tracker.getAnalytics();
+        
+        // Google Analytics (you can add your tracking ID here)
         // gtag('config', 'GA_TRACKING_ID');
     </script>
 </body>
