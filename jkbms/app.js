@@ -16,9 +16,13 @@ let bleQueryTimer = null;
 let bleConnectionStatus = 'disconnected'; // 'disconnected', 'connecting', 'connected'
 let rxBuffer = new Uint8Array(0);
 
+// Cloud remote sync variables
+let remotePollTimer = null;
+let broadcastTimer = null;
+
 // Local State (for Web Bluetooth or local simulation)
 let localBmsState = {
-  mode: 'webble', // 'webble' (Browser Web Bluetooth) or 'simulated'
+  mode: 'webble', // 'webble' (Browser Web Bluetooth), 'remote' (Cloud Remote View), or 'simulated'
   connectionStatus: 'disconnected',
   connectedDevice: null,
   telemetry: {
@@ -73,6 +77,9 @@ const modeSelect = document.getElementById('mode-select');
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const reconnectBtn = document.getElementById('reconnect-btn');
+const remoteKeyContainer = document.getElementById('remote-key-container');
+const remoteKeyInput = document.getElementById('remote-key-input');
+const statusKeyDisplay = document.getElementById('status-key-display');
 
 // DOM Elements - Tab 1 (Informasi)
 const infoVoltage = document.getElementById('info-voltage');
@@ -101,6 +108,8 @@ const cellsGrid = document.getElementById('cells-grid');
 const switchCharge = document.getElementById('set-switch-charge');
 const switchDischarge = document.getElementById('set-switch-discharge');
 const switchBalance = document.getElementById('set-switch-balance');
+const switchBroadcast = document.getElementById('set-switch-broadcast');
+const broadcastSwitchContainer = document.getElementById('broadcast-switch-container');
 const setTempMos = document.getElementById('set-temp-mos');
 const setTempT1 = document.getElementById('set-temp-t1');
 const setTempT2 = document.getElementById('set-temp-t2');
@@ -139,7 +148,7 @@ navButtons.forEach(btn => {
 });
 
 // ----------------------------------------------------
-// WEBSOCKET BACKEND HUB (Optional)
+// WEBSOCKET BACKEND HUB (Optional fallback for local node devs)
 // ----------------------------------------------------
 function connectWebSocket() {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -158,7 +167,8 @@ function connectWebSocket() {
         try {
             const message = JSON.parse(event.data);
             if (message.type === 'state') {
-                if (localBmsState.mode !== 'webble') {
+                // Ignore WebSocket telemetry if we are in local Web BLE or Remote View modes
+                if (localBmsState.mode !== 'webble' && localBmsState.mode !== 'remote') {
                     localBmsState = message.data;
                     updateUI(localBmsState);
                 }
@@ -194,8 +204,31 @@ function updateUI(bms) {
         statusDot.classList.add('disconnected');
         statusText.innerText = 'VIRTUAL SIMULATOR (DEMO)';
         reconnectBtn.style.display = 'none';
+        remoteKeyContainer.classList.add('hidden');
+        broadcastSwitchContainer.classList.add('hidden');
+    } else if (bms.mode === 'remote') {
+        reconnectBtn.style.display = 'none';
+        remoteKeyContainer.classList.remove('hidden');
+        broadcastSwitchContainer.classList.add('hidden');
+        
+        // Remote connection status
+        if (bleConnectionStatus === 'connected') {
+            statusDot.classList.add('connected');
+        } else {
+            statusDot.classList.add('disconnected');
+        }
     } else {
+        // webble mode
         reconnectBtn.style.display = 'inline-flex';
+        remoteKeyContainer.classList.add('hidden');
+        
+        // Display broadcast switch if Bluetooth is connected
+        if (bleConnectionStatus === 'connected') {
+            broadcastSwitchContainer.classList.remove('hidden');
+        } else {
+            broadcastSwitchContainer.classList.add('hidden');
+            stopBroadcasting();
+        }
         
         switch (bleConnectionStatus) {
             case 'disconnected':
@@ -435,7 +468,6 @@ function showToast(message, type = 'info') {
 function writeCharacteristic(characteristic, value) {
     if (!characteristic) return Promise.reject(new Error("Karakteristik tidak aktif"));
     
-    // Try writing with different Web BLE methods sequentially for maximum compatibility
     if (characteristic.writeValueWithoutResponse) {
         return characteristic.writeValueWithoutResponse(value)
             .catch(err => {
@@ -538,9 +570,8 @@ function connectWebBle() {
         };
         showToast("Bluetooth Terhubung!", "success");
 
-        // Start background BMS status query loop (every 2s)
         bleQueryTimer = setInterval(sendBmsQuery, 2000);
-        sendBmsQuery(); // Query immediately
+        sendBmsQuery(); 
         
         updateUI(localBmsState);
     })
@@ -553,7 +584,6 @@ function connectWebBle() {
 
 function onBleNotificationReceived(event) {
     let value = event.target.value;
-    // Safe buffer wrapping using offset and length
     let chunk = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     handleIncomingBleData(chunk);
 }
@@ -1054,6 +1084,131 @@ function stopLocalSimulator() {
     }
 }
 
+// ====================================================
+// CLOUD REMOTE SYNCING ENGINE (npoint.io)
+// ====================================================
+function initRemoteBinAndStartBroadcast() {
+    let savedBinId = localStorage.getItem('jkbms_remote_bin_id');
+    if (savedBinId) {
+        startBroadcasting(savedBinId);
+    } else {
+        showToast("Membuat remote key baru...", "info");
+        // Create a new bin anonymously on npoint.io
+        fetch('https://api.npoint.io', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(localBmsState)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.id) {
+                localStorage.setItem('jkbms_remote_bin_id', data.id);
+                showToast("Remote key dibuat!", "success");
+                startBroadcasting(data.id);
+            }
+        })
+        .catch(err => {
+            showToast("Gagal membuat remote key: " + err.message, "error");
+            switchBroadcast.checked = false;
+        });
+    }
+}
+
+function startBroadcasting(binId) {
+    statusKeyDisplay.innerText = `KEY: ${binId}`;
+    statusKeyDisplay.classList.remove('hidden');
+    
+    if (broadcastTimer) clearInterval(broadcastTimer);
+    
+    broadcastTimer = setInterval(() => {
+        if (!switchBroadcast.checked || bleConnectionStatus !== 'connected') {
+            stopBroadcasting();
+            return;
+        }
+        
+        // Update the bin on npoint.io with current telemetry and settings
+        fetch(`https://api.npoint.io/${binId}`, {
+            method: 'POST', // npoint updates are performed by POSTing to the bin URL
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(localBmsState)
+        })
+        .then(res => res.json())
+        .then(() => console.log("Broadcasted telemetry to cloud."))
+        .catch(err => console.error("Cloud broadcast failed:", err));
+    }, 3000);
+}
+
+function stopBroadcasting() {
+    if (broadcastTimer) {
+        clearInterval(broadcastTimer);
+        broadcastTimer = null;
+    }
+    statusKeyDisplay.classList.add('hidden');
+    switchBroadcast.checked = false;
+}
+
+function startRemotePolling() {
+    if (remotePollTimer) clearInterval(remotePollTimer);
+    
+    // Check local storage for previously used key to prefill input
+    let savedKey = localStorage.getItem('jkbms_remote_key_input');
+    if (savedKey && !remoteKeyInput.value) {
+        remoteKeyInput.value = savedKey;
+    }
+
+    pollRemoteTelemetry(); // Poll immediately
+    remotePollTimer = setInterval(pollRemoteTelemetry, 3000);
+}
+
+function stopRemotePolling() {
+    if (remotePollTimer) {
+        clearInterval(remotePollTimer);
+        remotePollTimer = null;
+    }
+    bleConnectionStatus = 'disconnected';
+    localBmsState.connectionStatus = 'disconnected';
+    localBmsState.connectedDevice = null;
+    updateUI(localBmsState);
+}
+
+function pollRemoteTelemetry() {
+    let key = remoteKeyInput.value.trim();
+    if (!key) {
+        statusText.innerText = "MASUKKAN KEY AWAN";
+        statusDot.className = 'status-indicator-dot disconnected';
+        return;
+    }
+
+    // Save key in localStorage for convenience
+    localStorage.setItem('jkbms_remote_key_input', key);
+
+    fetch(`https://api.npoint.io/${key}`)
+        .then(res => {
+            if (!res.ok) throw new Error("Key tidak valid");
+            return res.json();
+        })
+        .then(data => {
+            if (data && data.telemetry) {
+                localBmsState.telemetry = data.telemetry;
+                if (data.settings) localBmsState.settings = data.settings;
+                
+                bleConnectionStatus = 'connected';
+                localBmsState.connectionStatus = 'connected';
+                localBmsState.connectedDevice = {
+                    name: "Cloud Synced BMS",
+                    address: "npoint.io/" + key
+                };
+                statusText.innerText = "REMOTE DATA SYNCED";
+                updateUI(localBmsState);
+            }
+        })
+        .catch(err => {
+            console.error("Remote poll error:", err);
+            statusText.innerText = "ERROR / KEY SALAH";
+            statusDot.className = 'status-indicator-dot disconnected';
+        });
+}
+
 // ----------------------------------------------------
 // INTERACTIVE EVENT BINDINGS
 // ----------------------------------------------------
@@ -1062,19 +1217,32 @@ modeSelect.addEventListener('change', () => {
     const val = modeSelect.value;
     localBmsState.mode = val;
     
+    // Cleanup previous mode actions
+    disconnectWebBle();
+    stopLocalSimulator();
+    stopRemotePolling();
+
     if (val === 'simulated') {
-        disconnectWebBle();
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'set_mode', value: 'simulated' }));
         } else {
             startLocalSimulator();
         }
+    } else if (val === 'remote') {
+        startRemotePolling();
     } else {
-        stopLocalSimulator();
+        // webble mode
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'set_mode', value: 'real' }));
         }
         connectWebBle();
+    }
+});
+
+// Trigger poll immediately when Remote Key is edited
+remoteKeyInput.addEventListener('input', () => {
+    if (localBmsState.mode === 'remote') {
+        pollRemoteTelemetry();
     }
 });
 
@@ -1088,6 +1256,15 @@ reconnectBtn.addEventListener('click', () => {
     }
 });
 
+// Broadcast switch changed
+switchBroadcast.addEventListener('change', () => {
+    if (switchBroadcast.checked) {
+        initRemoteBinAndStartBroadcast();
+    } else {
+        stopBroadcasting();
+    }
+});
+
 switchCharge.addEventListener('change', () => {
     const val = switchCharge.checked;
     localBmsState.telemetry.switches.charge = val;
@@ -1098,7 +1275,7 @@ switchCharge.addEventListener('change', () => {
         } else {
             updateUI(localBmsState);
         }
-    } else {
+    } else if (localBmsState.mode === 'webble') {
         writeBmsSetting(0x9D, val ? 1 : 0, 1);
     }
     showToast(`Saklar CHG: ${val ? 'ON' : 'OFF'}`, 'info');
@@ -1114,7 +1291,7 @@ switchDischarge.addEventListener('change', () => {
         } else {
             updateUI(localBmsState);
         }
-    } else {
+    } else if (localBmsState.mode === 'webble') {
         writeBmsSetting(0x9E, val ? 1 : 0, 1);
     }
     showToast(`Saklar DCH: ${val ? 'ON' : 'OFF'}`, 'info');
@@ -1130,7 +1307,7 @@ switchBalance.addEventListener('change', () => {
         } else {
             updateUI(localBmsState);
         }
-    } else {
+    } else if (localBmsState.mode === 'webble') {
         writeBmsSetting(0x9F, val ? 1 : 0, 1);
     }
     showToast(`Saklar BAL: ${val ? 'ON' : 'OFF'}`, 'info');
@@ -1166,7 +1343,7 @@ writeSettingsBtn.addEventListener('click', () => {
         } else {
             updateUI(localBmsState);
         }
-    } else {
+    } else if (localBmsState.mode === 'webble') {
         writeBmsSetting(0x90, Math.round(payload.cellOvervoltageProtect * 1000), 2);
         writeBmsSetting(0x91, Math.round(payload.cellUndervoltageProtect * 1000), 2);
         writeBmsSetting(0x94, Math.round(payload.maxChargeCurrent * 10), 2);

@@ -950,3 +950,26 @@ input:checked + .lcd-toggle-slider:before {
 .lcd-toast span {
     font-weight: 700;
 }
+
+.hidden {
+    display: none !important;
+}
+
+.lcd-input-small {
+    background-color: #050608;
+    border: 1px solid var(--lcd-border-color);
+    color: var(--lcd-green);
+    font-family: var(--font-digital);
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    outline: none;
+    width: 100px;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+.lcd-input-small:focus {
+    border-color: var(--lcd-green);
+    box-shadow: 0 0 4px var(--lcd-green-glow);
+}
+
