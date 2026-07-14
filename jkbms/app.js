@@ -506,36 +506,84 @@ function connectWebBle() {
         return;
     }
 
-    console.log("Starting Web Bluetooth request...");
+    console.log("Starting Web Bl    // Implementasi Two-Stage Handshake (Wake Up + Stream)
+    // Tahap 1: Hubungkan ke Gerbang Pemicu (51210CN...) untuk membangunkan MCU, kirim Modbus poll, lalu putus.
+    // Tahap 2: Hubungkan ke Pipa Data (EZ BT Power...) untuk mendengarkan stream data telemetry asli.
+    
+    console.log("Starting Two-Stage Web Bluetooth connection...");
+    showToast("Tahap 1: Hubungkan ke gerbang pemicu (51210CN)...", "info");
+
+    // ====================================================
+    // TAHAP 1: KETUK PINTO (WAKE UP)
+    // ====================================================
+    navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: "51210" }],
+        optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
+    })
+    .then(async device => {
+        bleDevice = device;
+        console.log("[TAHAP 1] Terhubung ke gerbang pemicu:", device.name);
+        showToast("Gerbang pemicu terhubung. Mengirim ketukan...", "info");
+        
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+        const char = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+
+        // Kirim Modbus poll untuk membangunkan MCU BMS
+        console.log("[TAHAP 1] Mengirim wake-up Modbus payload...");
+        await writeCharacteristic(char, CMD_MODBUS_POLL);
+        
+        // Jeda agar transmisi tuntas dan MCU membuka gerbang EZ BT Power
+        await new Promise(r => setTimeout(r, 1000));
+        
+        // Putus koneksi agar tidak memacetkan BLE chip
+        device.gatt.disconnect();
+        console.log("[TAHAP 1] Selesai. Gerbang pemicu diputus.");
+        showToast("Tahap 1 sukses! Silakan klik SAMBUNGKAN BT lagi untuk menyambung ke EZ BT Power.", "success");
+        
+        // Reset state untuk koneksi berikutnya (Tahap 2)
+        bleConnectionStatus = 'disconnected';
+        localBmsState.connectionStatus = 'disconnected';
+        updateUI(localBmsState);
+    })
+    .catch(err => {
+        // Jika gagal di Tahap 1 karena device 51210 tidak ditemukan atau user membatalkan,
+        // berikan opsi untuk langsung mencoba mendengarkan di Tahap 2 (misalnya MCU sudah bangun)
+        console.warn("[TAHAP 1] Dibatalkan atau gagal. Mencoba langsung menyambung ke pipa data (EZ BT)...", err);
+        showToast("Membuka dialog untuk EZ BT Power...", "info");
+        
+        // ====================================================
+        // TAHAP 2: SAMBUNG PIPA DATA (EZ BT POWER)
+        // ====================================================
+        connectToEzBtDataStream();
+    });
+}
+
+function connectToEzBtDataStream() {
     bleConnectionStatus = 'connecting';
     updateUI(localBmsState);
 
     navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        // Dendaftarkan UUID standar dan custom modbus/cypress service agar tidak diblokir browser
+        filters: [{ namePrefix: "EZ BT" }],
         optionalServices: [
-            '0000ffe0-0000-1000-8000-00805f9b34fb', // JKBMS FFE0
-            '0000fff0-0000-1000-8000-00805f9b34fb', // JKBMS FFF0
-            '0000ffe5-0000-1000-8000-00805f9b34fb', // JKBMS FFE5
-            '00000001-0000-1000-8000-00805f9b34fb', // Cypress / Industrial custom service 1
-            '00000006-0000-1000-8000-00805f9b34fb', // Cypress / Industrial custom service 6
-            '000000ff-0000-1000-8000-00805f9b34fb', // Industrial custom service FF
-            '00001800-0000-1000-8000-00805f9b34fb', // Generic Access
-            '00001801-0000-1000-8000-00805f9b34fb', // Generic Attribute
-            '0000180a-0000-1000-8000-00805f9b34fb'  // Device Information
+            '0000ffe0-0000-1000-8000-00805f9b34fb',
+            '0000ffe5-0000-1000-8000-00805f9b34fb',
+            '00000001-0000-1000-8000-00805f9b34fb',
+            '00000006-0000-1000-8000-00805f9b34fb',
+            '000000ff-0000-1000-8000-00805f9b34fb'
         ]
     })
     .then(device => {
         bleDevice = device;
-        console.log("BLE Device selected:", device.name);
-        showToast(`Menghubungkan ke ${device.name || 'Jikong BMS'}...`, "info");
+        console.log("[TAHAP 2] Terhubung ke pipa data:", device.name);
+        showToast(`Menghubungkan ke ${device.name}...`, "info");
         
         device.addEventListener('gattserverdisconnected', onBleDisconnected);
         return device.gatt.connect();
     })
     .then(async server => {
         bleServer = server;
-        console.log("GATT Connected. Scanning all primary services dynamically...");
+        console.log("[TAHAP 2] GATT Terkoneksi. Memindai karakteristik secara dinamis...");
         const services = await server.getPrimaryServices();
         let foundChar = null;
 
@@ -545,32 +593,29 @@ function connectWebBle() {
                 const chars = await service.getCharacteristics();
                 for (const char of chars) {
                     const p = char.properties;
-                    const canWrite = p.write || p.writeWithoutResponse;
-                    const canNotify = p.notify;
-                    console.log(`   ├─ Characteristic: ${char.uuid} | Write: ${canWrite} | Notify: ${canNotify}`);
-                    
-                    if (canNotify && canWrite) {
+                    if (p.notify) {
                         foundChar = char;
                         bleService = service;
-                        console.log(`   └── ✅ FOUND communication channel: ${char.uuid}`);
+                        console.log(`   └── ✅ JALUR DATA KETEMU DI UUID: ${char.uuid}`);
                         break;
                     }
                 }
-            } catch (err) {
-                console.warn(`Failed to inspect service ${service.uuid}:`, err);
+            } catch (e) {
+                console.warn(`Gagal membaca service ${service.uuid}:`, e);
             }
             if (foundChar) break;
         }
 
         if (!foundChar) {
-            throw new Error("Jalur komunikasi passthrough (Notify + Write) tidak ditemukan pada device ini.");
+            throw new Error("Karakteristik data stream (Notify) tidak ditemukan.");
         }
 
         bleRxChar = foundChar;
+        // Gunakan karakteristik yang sama untuk TX jika mendukung Write, jika tidak cari pasangannya
         bleTxChar = foundChar;
     })
     .then(() => {
-        console.log("Enabling data notification...");
+        console.log("Mengaktifkan stream data baterai...");
         return bleRxChar.startNotifications();
     })
     .then(() => {
@@ -580,37 +625,27 @@ function connectWebBle() {
         bleConnectionStatus = 'connected';
         localBmsState.connectionStatus = 'connected';
         localBmsState.connectedDevice = {
-            name: bleDevice.name || 'Jikong BMS',
+            name: bleDevice.name || 'Jikong BMS (EZ BT)',
             address: bleDevice.id
         };
         
-        // ── JK02 Protocol: send poll request + listen for auto-stream ──
-        // Some firmware streams automatically; others need a periodic "trigger".
-        // This 4E 57 request covers both cases.
-        showToast("Terhubung! Memulai polling JK02...", "success");
+        showToast("Terkoneksi! Mengalirkan data baterai...", "success");
         debugPacketCount = 0;
         atHeartbeatCount = 0;
         bleDataReady = false;
-        jk04RxBuffer = new Uint8Array(0);
         jk02RxBuffer = new Uint8Array(0);
 
-        // Start JK02 poll every 2 seconds
-        setTimeout(() => {
-            sendJk02Poll(); // immediate first trigger
-            bleQueryTimer = setInterval(sendJk02Poll, 2000);
-        }, 500);
+        // Kirim Modbus poll trigger secara periodik jika diperlukan oleh modul data
+        bleQueryTimer = setInterval(sendJk02Poll, 2000);
 
-        // Automatically start Cloud Broadcast when Bluetooth connects!
         switchBroadcast.checked = true;
         initRemoteBinAndStartBroadcast();
-        
         updateUI(localBmsState);
     })
     .catch(err => {
         console.error("GATT connection error:", err);
         showToast("Gagal menyambung: " + err.message, "error");
         disconnectWebBle();
-    });
 }
 
 function onBleNotificationReceived(event) {
