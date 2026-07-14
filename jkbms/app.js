@@ -616,9 +616,64 @@ function onBleNotificationReceived(event) {
         sendBmsAuth('123456');
         return;
     }
+
+    // Detect AT command mode: BMS sends 41 54 0D 0A ('AT\r\n') as heartbeat
+    if (chunk.length === 4 &&
+        chunk[0] === 0x41 && chunk[1] === 0x54 &&
+        chunk[2] === 0x0D && chunk[3] === 0x0A) {
+        atHeartbeatCount++;
+        if (atHeartbeatCount === 3) {
+            // After 3 consecutive AT heartbeats, switch to AT command mode
+            bmsProtocol = 'at';
+            console.log("[Protocol] AT mode detected! Switching to AT command protocol.");
+            showToast("Mode AT terdeteksi! Mengirim GETINF...", "info");
+            sendAtCommand('GETINF');
+        }
+        return; // Don't try to parse AT heartbeat as binary data
+    }
     
+    // Non-AT, non-auth data: try to parse as AT response text first
+    if (bmsProtocol === 'at') {
+        const text = new TextDecoder().decode(chunk).trim();
+        console.log(`[AT RESP] "${text}"`);
+        parseAtResponse(text);
+        return;
+    }
+
     handleIncomingBleData(chunk);
 }
+
+// Parse AT command text responses from BMS
+function parseAtResponse(text) {
+    console.log('[AT Parser] Received:', text);
+    // Try to extract key=value pairs e.g. VOLTAGE=52.95, CURRENT=3.5
+    const pairs = text.split(/[,;\n]/);
+    let updated = false;
+    pairs.forEach(pair => {
+        const [k, v] = pair.split('=').map(s => s.trim());
+        if (!k || !v) return;
+        const num = parseFloat(v);
+        switch (k.toUpperCase()) {
+            case 'VOLTAGE': case 'TOTALVOL': case 'BAT_VOL':
+                localBmsState.telemetry.totalVoltage = num; updated = true; break;
+            case 'CURRENT': case 'BAT_CUR':
+                localBmsState.telemetry.current = num; updated = true; break;
+            case 'SOC': case 'RSOC':
+                localBmsState.telemetry.soc = Math.round(num); updated = true; break;
+            case 'CAPACITY': case 'REMAIN_CAP':
+                localBmsState.telemetry.remainingCapacity = num; updated = true; break;
+            case 'TEMP1': case 'MOS_TEMP':
+                localBmsState.telemetry.temperatures.mosfet = num; updated = true; break;
+        }
+    });
+    if (updated) {
+        bleDataReady = true;
+        localBmsState.telemetry.power = localBmsState.telemetry.totalVoltage * localBmsState.telemetry.current;
+        console.log('[AT Parser] ✅ Updated from AT response!');
+        updateUI(localBmsState);
+    }
+}
+
 
 function onBleDisconnected() {
     console.warn("BLE Device disconnected.");
@@ -700,19 +755,58 @@ function sendBmsAuth(password = '123456') {
         });
 }
 
+// BMS protocol detection state
+let bmsProtocol = 'auto'; // 'auto', 'at', 'jk04', 'jk02'
+let atHeartbeatCount = 0;
+
 function sendBmsQuery() {
     if (!bleTxChar) return;
 
+    if (bmsProtocol === 'at') {
+        // AT command mode - send GETINF to request full data
+        sendAtCommand('GETINF');
+    } else if (bmsProtocol === 'jk04') {
+        // JK04 binary protocol (AA 55 90 EB + 0x96)
+        sendJk04Query();
+    } else {
+        // Default: try JK02 binary (4E 57) 
+        sendJk02Query();
+    }
+}
+
+// AT command mode (text protocol)
+function sendAtCommand(cmd) {
+    const text = cmd + '\r\n';
+    const encoded = new TextEncoder().encode(text);
+    console.log(`[AT CMD] Sending: ${text.trim()}`);
+    writeCharacteristic(bleTxChar, encoded)
+        .catch(err => console.error('[AT CMD] Error:', err));
+}
+
+// JK04 binary protocol query (AA 55 90 EB header)
+function sendJk04Query() {
+    // Cell info request: AA 55 90 EB 96 + 14 zeros + checksum
+    const frame = new Uint8Array(20);
+    frame[0] = 0xAA; frame[1] = 0x55; frame[2] = 0x90; frame[3] = 0xEB;
+    frame[4] = 0x96; // Cell info command
+    let cs = 0;
+    for (let i = 0; i < 19; i++) cs += frame[i];
+    frame[19] = cs & 0xFF;
+    console.log('[JK04] Sending cell info query:', Array.from(frame).map(b => b.toString(16).padStart(2,'0')).join(' '));
+    writeCharacteristic(bleTxChar, frame)
+        .catch(err => console.error('[JK04] Error:', err));
+}
+
+// JK02 binary protocol query (4E 57 header)
+function sendJk02Query() {
     let cmd = new Uint8Array(18);
     cmd[0] = 0x4E; cmd[1] = 0x57;
-    cmd[2] = 0x00; cmd[3] = 0x16; // 22 bytes total
-    cmd[8] = 0x06; // Read Status command
-    cmd[9] = 0x03; // Source PC
+    cmd[2] = 0x00; cmd[3] = 0x16;
+    cmd[8] = 0x06;
+    cmd[9] = 0x03;
 
     let sum = 0;
-    for (let i = 0; i < cmd.length; i++) {
-        sum += cmd[i];
-    }
+    for (let i = 0; i < cmd.length; i++) sum += cmd[i];
 
     let finalPacket = new Uint8Array(22);
     finalPacket.set(cmd);
@@ -722,10 +816,7 @@ function sendBmsQuery() {
     finalPacket[21] = sum & 0xff;
 
     writeCharacteristic(bleTxChar, finalPacket)
-        .catch(err => {
-            console.error("Error writing query command:", err);
-            showToast("Gagal meminta data dari BMS: " + err.message, "error");
-        });
+        .catch(err => console.error("Error writing JK02 query:", err));
 }
 
 function writeBmsSetting(registerId, value, size = 1) {
