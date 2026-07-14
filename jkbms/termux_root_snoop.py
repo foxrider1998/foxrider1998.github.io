@@ -41,6 +41,65 @@ def parse_warning_flags(flags):
     if flags & (1 << 3): warnings.append("Overtemp")
     return warnings
 
+def decode_legacy_55aa_payload(data):
+    # Paket JKBMS Legacy 55 AA (panjang ~140 bytes)
+    # Byte 0-1: 55 AA
+    # Byte 4 s/d 35: Voltase Sel 1-16 (2 byte BE per sel, mV)
+    # Byte 38-39: MOSFET Temp
+    # Byte 40-41: T1 Temp
+    # Byte 42-43: T2 Temp
+    # Byte 44-45: Total Voltage (0.01V)
+    # Byte 48-49: Current (Signed BE, 0.01A)
+    # Byte 52: SOC
+    # Byte 53-54: Cycle Count
+    t = {
+        "cells": [],
+        "temperatures": {},
+        "switches": {"charge": True, "discharge": True, "balance": True}
+    }
+    
+    try:
+        # Loop baca tegangan sel (asumsi 16 sel max)
+        for i in range(16):
+            off = 4 + (i * 2)
+            if off + 1 < len(data):
+                mv = (data[off] << 8) | data[off+1]
+                if mv > 2000 and mv < 4500:
+                    t["cells"].append({
+                        "index": i + 1,
+                        "voltage": mv / 1000.0,
+                        "balancing": False
+                    })
+        
+        # MOSFET Temp & Temps
+        if 39 < len(data):
+            t["temperatures"]["mosfet"] = read_int16_be(data, 38) * 0.1
+        if 41 < len(data):
+            t["temperatures"]["temp1"] = read_int16_be(data, 40) * 0.1
+        if 43 < len(data):
+            t["temperatures"]["temp2"] = read_int16_be(data, 42) * 0.1
+            
+        # Total Voltage (0.01V)
+        if 45 < len(data):
+            t["totalVoltage"] = read_uint16_be(data, 44) * 0.01
+            
+        # Current (0.01A)
+        if 49 < len(data):
+            t["current"] = read_int16_be(data, 48) * 0.01
+            
+        # SOC
+        if 52 < len(data):
+            t["soc"] = data[52]
+            
+        # Cycle Count
+        if 54 < len(data):
+            t["cycleCount"] = read_uint16_be(data, 53)
+            
+        t["power"] = t.get("totalVoltage", 0.0) * t.get("current", 0.0)
+        return t
+    except Exception as e:
+        return None
+
 def decode_jk_bms_payload(data):
     cmd_type = data[8]
     if cmd_type != 0x06:
@@ -204,10 +263,27 @@ def main():
             
             buffer.extend(byte)
             
-            # Cari marker awal JKBMS packet (4E 57)
-            header_idx = buffer.find(b'\x4e\x57')
+            # Cari marker awal JKBMS packet: 4E 57 (JK02) atau 55 AA (Legacy UART)
+            header_idx_4e57 = buffer.find(b'\x4e\x57')
+            header_idx_55aa = buffer.find(b'\x55\xaa')
+            
+            # Tentukan header mana yang muncul duluan
+            header_idx = -1
+            is_legacy_55aa = False
+            
+            if header_idx_4e57 != -1 and header_idx_55aa != -1:
+                if header_idx_4e57 < header_idx_55aa:
+                    header_idx = header_idx_4e57
+                else:
+                    header_idx = header_idx_55aa
+                    is_legacy_55aa = True
+            elif header_idx_4e57 != -1:
+                header_idx = header_idx_4e57
+            elif header_idx_55aa != -1:
+                header_idx = header_idx_55aa
+                is_legacy_55aa = True
+
             if header_idx == -1:
-                # Batasi buffer agar tidak over-memory jika data sampah menumpuk
                 if len(buffer) > 2000:
                     del buffer[:-100]
                 continue
@@ -218,27 +294,43 @@ def main():
                 
             if len(buffer) < 4:
                 continue
-                
-            # Baca panjang data packet (byte 2 & 3)
-            packet_len = (buffer[2] << 8) | buffer[3]
             
-            # Tunggu sampai seluruh chunk terkumpul sesuai panjang packet
+            if is_legacy_55aa:
+                # Format legacy 55 AA biasanya memiliki panjang tetap atau panjang tertulis di byte ke-2
+                # Dari analisis log, format 55 AA memiliki panjang data paket ~140 bytes
+                packet_len = 140 
+            else:
+                # Format standard 4E 57 (panjang tertulis di byte ke-2 dan ke-3)
+                packet_len = (buffer[2] << 8) | buffer[3]
+            
             if len(buffer) < packet_len:
                 continue
                 
             packet = buffer[:packet_len]
             del buffer[:packet_len]
             
-            # Parsing data jika checksum valid
-            if packet_len > 8:
-                data_part = packet[:-4]
-                rx_checksum = (packet[-4] << 24) | (packet[-3] << 16) | (packet[-2] << 8) | packet[-1]
-                calculated_checksum = sum(data_part)
-                
-                if calculated_checksum == rx_checksum:
-                    telemetry = decode_jk_bms_payload(data_part)
+            if is_legacy_55aa:
+                # Untuk format 55 AA, kita extract nilai sel (voltase, suhu, dll) di offset statis:
+                # Byte 4 s/d 35: Tegangan 16 Sel (2 byte BE per sel)
+                # Byte 38-39: MOSFET Temp, T1 Temp, T2 Temp, dll.
+                try:
+                    telemetry = decode_legacy_55aa_payload(packet)
                     if telemetry:
                         render_ui(telemetry)
+                except Exception as e:
+                    pass
+            else:
+                # Parsing data standard 4E 57 jika checksum valid
+                if packet_len > 8:
+                    data_part = packet[:-4]
+                    rx_checksum = (packet[-4] << 24) | (packet[-3] << 16) | (packet[-2] << 8) | packet[-1]
+                    calculated_checksum = sum(data_part)
+                    
+                    if calculated_checksum == rx_checksum:
+                        telemetry = decode_jk_bms_payload(data_part)
+                        if telemetry:
+                            render_ui(telemetry)
+
 
     except KeyboardInterrupt:
         print("\nMonitoring dihentikan.")
