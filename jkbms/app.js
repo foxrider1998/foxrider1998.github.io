@@ -487,6 +487,7 @@ function writeCharacteristic(characteristic, value) {
 // ====================================================
 // DIRECT BROWSER WEB BLUETOOTH CLIENT
 // ====================================================
+let debugPacketCount = 0;
 function connectWebBle() {
     if (bleConnectionStatus === 'connecting' || bleConnectionStatus === 'connected') {
         disconnectWebBle();
@@ -568,7 +569,9 @@ function connectWebBle() {
             name: bleDevice.name || 'Jikong BMS',
             address: bleDevice.id
         };
-        showToast("Bluetooth Terhubung!", "success");
+        
+        showToast("Terhubung! Menunggu data JKBMS...", "success");
+        debugPacketCount = 0; // reset counter
 
         bleQueryTimer = setInterval(sendBmsQuery, 2000);
         sendBmsQuery(); 
@@ -585,6 +588,12 @@ function connectWebBle() {
 function onBleNotificationReceived(event) {
     let value = event.target.value;
     let chunk = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    
+    debugPacketCount++;
+    if (debugPacketCount <= 10) {
+        showToast("Menerima paket data BLE: " + chunk.length + " bytes", "success");
+    }
+    
     handleIncomingBleData(chunk);
 }
 
@@ -748,6 +757,7 @@ function handleIncomingBleData(chunk) {
         if (calculatedChecksum === rxChecksum) {
             decodeJkBmsPacket(dataPart);
         } else {
+            showToast("Error Checksum BLE: calc=" + calculatedChecksum + " rx=" + rxChecksum, "error");
             console.warn(`[BLE Parser] Checksum error! calc=${calculatedChecksum}, rx=${rxChecksum}`);
         }
     }
