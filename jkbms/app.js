@@ -571,17 +571,24 @@ function connectWebBle() {
             address: bleDevice.id
         };
         
-        showToast("Terhubung! Mulai query JK04...", "success");
+        showToast("Terhubung ke BMS! Mengirim auth...", "success");
         debugPacketCount = 0;
         atHeartbeatCount = 0;
-        bmsProtocol = 'jk04'; // Start with JK04 binary protocol
+        bmsProtocol = 'jk04';
         bleDataReady = false;
+        jk04RxBuffer = new Uint8Array(0);
 
-        // Brief delay then start querying
+        // Step 1: Send auth with correct password '1234'
+        setTimeout(() => sendBmsAuth('1234'), 300);
+        
+        // Step 2: After 1s, fetch settings (0x96) once to get cell count & capacity
+        setTimeout(() => sendJk04Query(0x96), 1000);
+        
+        // Step 3: After 1.5s, start telemetry polling (0x97) every 1 second
         setTimeout(() => {
-            sendJk04Query();
-        }, 500);
-        bleQueryTimer = setInterval(sendBmsQuery, 1000);
+            bleQueryTimer = setInterval(sendBmsQuery, 1000);
+            sendBmsQuery(); // immediate first poll
+        }, 1500);
         
         // Automatically start Cloud Broadcast when Bluetooth connects!
         switchBroadcast.checked = true;
@@ -609,48 +616,164 @@ function onBleNotificationReceived(event) {
 
     debugPacketCount++;
     if (debugPacketCount <= 15) {
-        showToast(`RX #${debugPacketCount}: ${chunk.length}B [${hex}]`, "success");
+        showToast(`RX #${debugPacketCount}: ${chunk.length}B [${hex.slice(0,30)}...]`, "success");
     }
 
-    // Detect JKBMS auth challenge: AA 55 90 EB = BMS asking for password
-    if (chunk.length === 4 &&
-        chunk[0] === 0xAA && chunk[1] === 0x55 &&
-        chunk[2] === 0x90 && chunk[3] === 0xEB) {
-        console.log("[BLE Auth] BMS requested authentication, sending password...");
-        showToast("BMS minta password! Mengirim '123456'...", "info");
-        sendBmsAuth('123456');
-        return;
-    }
-
-    // Detect AT heartbeat: 41 54 0D 0A = 'AT\r\n' - this is just a BMS keepalive broadcast
-    // The BMS sends this periodically regardless of protocol.
-    // We use JK04 binary (AA 55 90 EB 96) to request data.
-    if (chunk.length === 4 &&
-        chunk[0] === 0x41 && chunk[1] === 0x54 &&
-        chunk[2] === 0x0D && chunk[3] === 0x0A) {
+    // Ignore AT keepalive heartbeat (41 54 0D 0A = 'AT\r\n')
+    if (chunk[0] === 0x41 && chunk[1] === 0x54 && chunk[2] === 0x0D && chunk[3] === 0x0A
+        && (chunk.length === 4 || chunk.every((b,i) => i % 4 < 4 && [0x41,0x54,0x0D,0x0A][i%4] === b))) {
+        if (atHeartbeatCount === 0) console.log('[Heartbeat] AT keepalive. JK04 protocol active.');
         atHeartbeatCount++;
-        if (atHeartbeatCount === 1) {
-            console.log('[Heartbeat] BMS AT keepalive detected. Using JK04 protocol to query.');
-        }
-        return; // Ignore heartbeat, don't parse
-    }
-
-    // JK04 response: starts with AA 55 90 EB
-    if (chunk.length >= 4 &&
-        chunk[0] === 0xAA && chunk[1] === 0x55 &&
-        chunk[2] === 0x90 && chunk[3] === 0xEB) {
-        console.log('[JK04] Got JK04 response, length=' + chunk.length);
-        handleIncomingBleData(chunk);
         return;
     }
 
+    // Auth challenge: AA 55 90 EB (4 bytes) → BMS asking for password
+    if (chunk.length === 4 &&
+        chunk[0] === 0xAA && chunk[1] === 0x55 &&
+        chunk[2] === 0x90 && chunk[3] === 0xEB) {
+        console.log("[BLE Auth] BMS requested auth, resending password '1234'...");
+        sendBmsAuth('1234');
+        return;
+    }
+
+    // JK04 response: starts with 55 AA EB 90 (reversed response header)
+    if (chunk[0] === 0x55 && chunk[1] === 0xAA &&
+        chunk[2] === 0xEB && chunk[3] === 0x90) {
+        // New response packet — reset accumulator and start fresh
+        jk04RxBuffer = new Uint8Array(chunk.length);
+        jk04RxBuffer.set(chunk);
+        console.log(`[JK04 RX] New response started, type=0x${chunk[4].toString(16)}, got ${chunk.length} bytes`);
+        processJk04Buffer();
+        return;
+    }
+
+    // Continuation chunk for ongoing JK04 response
+    if (jk04RxBuffer.length > 0) {
+        const merged = new Uint8Array(jk04RxBuffer.length + chunk.length);
+        merged.set(jk04RxBuffer);
+        merged.set(chunk, jk04RxBuffer.length);
+        jk04RxBuffer = merged;
+        console.log(`[JK04 RX] Accumulated ${jk04RxBuffer.length} bytes total`);
+        processJk04Buffer();
+        return;
+    }
+
+    // Fallback: try JK02 4E 57 style parser
     handleIncomingBleData(chunk);
 }
 
-// Parse AT command text responses from BMS
+// Process accumulated JK04 response buffer when we think we have a full frame
+function processJk04Buffer() {
+    if (jk04RxBuffer.length < 5) return;
+
+    const frameType = jk04RxBuffer[4];
+    // Heuristic: response is complete when next start marker (55 AA EB 90) appears
+    // or when no new data comes for a period.
+    // For now: try to decode if we have at least 150 bytes (one full chunk)
+    if (jk04RxBuffer.length >= 150) {
+        console.log(`[JK04] Processing ${jk04RxBuffer.length} bytes, frameType=0x${frameType.toString(16)}`);
+        decodeJk04Frame(jk04RxBuffer, frameType);
+        jk04RxBuffer = new Uint8Array(0);
+    }
+} // end processJk04Buffer
+
+// =====================================================
+// JK04 FRAME DECODER
+// Response header: 55 AA EB 90 [type] [data...]
+// type 0x01 = settings (from 0x96 command)
+// type 0x02 = telemetry / cell info (from 0x97 command)
+// type 0x03 = device info (serial, firmware, password)
+// =====================================================
+function decodeJk04Frame(data, frameType) {
+    const hex32 = Array.from(data.slice(0, 32)).map(b => b.toString(16).padStart(2,'0')).join(' ');
+    console.log(`[JK04 Decoder] type=0x${frameType.toString(16)}, total=${data.length} bytes`);
+    console.log(`[JK04 Decoder] First 32B: ${hex32}`);
+
+    const t = localBmsState.telemetry;
+    const s = localBmsState.settings;
+
+    if (frameType === 0x01) {
+        // ── SETTINGS FRAME (0x96 response) ──────────────────
+        // Fields are 4-byte little-endian uint32, starting at byte[5]
+        // Known offsets (confirmed from data analysis vs JK app):
+        // [5..8]    = cell overvoltage recovery (mV)
+        // [9..12]   = cell undervoltage protect (mV)
+        // [13..16]  = cell undervoltage recovery (mV)
+        // [17..20]  = cell overvoltage protect (mV)
+        // [113..116]= cell count
+        // [129..132]= nominal capacity (mAh)
+        function read32(off) {
+            if (off + 3 >= data.length) return 0;
+            return data[off] | (data[off+1]<<8) | (data[off+2]<<16) | (data[off+3]<<24);
+        }
+        const cellOVP       = read32(17) ; // mV
+        const cellUVP       = read32(9)  ; // mV
+        const cellUVPRec    = read32(13) ; // mV
+        const cellOVPRec    = read32(5)  ; // mV
+        const cellCount     = read32(113);
+        const nomCapMah     = read32(129); // mAh
+
+        console.log(`[JK04 Settings] cellCount=${cellCount}, nomCap=${nomCapMah}mAh, OVP=${cellOVP}mV, UVP=${cellUVP}mV`);
+
+        if (cellCount > 0 && cellCount <= 32) s.cellCount = cellCount;
+        if (nomCapMah > 0) s.nominalCapacity = nomCapMah / 1000; // Ah
+        if (cellOVP > 0)   s.cellOvervoltageProtect = cellOVP / 1000;
+        if (cellUVP > 0)   s.cellUndervoltageProtect = cellUVP / 1000;
+        if (cellOVPRec > 0) s.cellOvervoltageRecovery = cellOVPRec / 1000;
+        if (cellUVPRec > 0) s.cellUndervoltageRecovery = cellUVPRec / 1000;
+
+        showToast(`Settings: ${cellCount} cells, ${(nomCapMah/1000).toFixed(1)}Ah`, "info");
+        updateUI(localBmsState);
+
+    } else if (frameType === 0x02) {
+        // ── TELEMETRY FRAME (0x97 response) ────────────────
+        // Based on JK04 protocol: 4-byte LE values
+        // Log ALL fields for analysis, then parse what we can
+        console.log('[JK04 Telemetry] Full hex dump:');
+        const fullHex = Array.from(data).map(b => b.toString(16).padStart(2,'0')).join(' ');
+        console.log(fullHex);
+        
+        // Try to parse: cell voltages start at byte[5], each 4 bytes LE in mV
+        // Total voltage, current, SOC follow after cell data
+        const cellCount = s.cellCount || 12;
+        const cells = [];
+        let off = 5;
+        for (let i = 0; i < cellCount && off + 3 < data.length; i++) {
+            const mv = data[off] | (data[off+1]<<8) | (data[off+2]<<16) | (data[off+3]<<24);
+            if (mv > 2000 && mv < 4500) { // sane cell voltage range (mV)
+                cells.push({ index: i+1, voltage: mv/1000, balancing: false });
+            }
+            off += 4;
+        }
+        if (cells.length > 0) {
+            t.cells = cells;
+            console.log(`[JK04 Telemetry] Parsed ${cells.length} cells. First: ${cells[0].voltage}V`);
+        }
+
+        // Look for total voltage, current, SOC after cells
+        // (offsets TBD from next console dump — log raw for now)
+        bleDataReady = cells.length > 0;
+        if (bleDataReady) updateUI(localBmsState);
+
+    } else if (frameType === 0x03) {
+        // ── DEVICE INFO (serial, model, firmware) ──────────
+        // Already visible in ASCII from logs, just extract password
+        const asciiSlice = Array.from(data.slice(5, 80))
+            .map(b => b >= 32 && b < 127 ? String.fromCharCode(b) : '.')
+            .join('');
+        console.log('[JK04 DevInfo] ASCII:', asciiSlice);
+
+    } else {
+        // Unknown frame type — dump full hex for analysis
+        console.log(`[JK04 Unknown type=0x${frameType.toString(16)}] Full hex:`);
+        const dump = Array.from(data).map(b => b.toString(16).padStart(2,'0')).join(' ');
+        console.log(dump);
+    }
+}
+
+// Parse AT command text responses from BMS (legacy, kept for compat)
 function parseAtResponse(text) {
     console.log('[AT Parser] Received:', text);
-    // Try to extract key=value pairs e.g. VOLTAGE=52.95, CURRENT=3.5
     const pairs = text.split(/[,;\n]/);
     let updated = false;
     pairs.forEach(pair => {
@@ -673,7 +796,6 @@ function parseAtResponse(text) {
     if (updated) {
         bleDataReady = true;
         localBmsState.telemetry.power = localBmsState.telemetry.totalVoltage * localBmsState.telemetry.current;
-        console.log('[AT Parser] ✅ Updated from AT response!');
         updateUI(localBmsState);
     }
 }
@@ -719,39 +841,30 @@ function disconnectWebBle() {
 // Some JKBMS units require password auth before responding to queries.
 // The BMS sends 4 bytes (AA 55 90 EB) on connect to indicate auth is needed.
 // ====================================================
-function sendBmsAuth(password = '123456') {
+function sendBmsAuth(password = '1234') {
     if (!bleTxChar) return;
 
-    // AA 55 90 EB = JK BMS activation / auth header
-    // Followed by password bytes in ASCII, padded to 20 bytes total
+    // Password frame using JK04 format: AA 55 90 EB + [pwLen] + [pw bytes] + [checksum]
     const pwBytes = Array.from(password).map(c => c.charCodeAt(0));
     const frame = new Uint8Array(20);
     frame[0] = 0xAA;
     frame[1] = 0x55;
     frame[2] = 0x90;
     frame[3] = 0xEB;
-
-    // Write password length and password bytes
     frame[4] = pwBytes.length;
     for (let i = 0; i < pwBytes.length && i < 14; i++) {
         frame[5 + i] = pwBytes[i];
     }
+    // Checksum = sum of first 5 bytes & 0xFF (confirmed from protocol analysis)
+    let checksum = (frame[0] + frame[1] + frame[2] + frame[3] + frame[4]) & 0xFF;
+    frame[19] = checksum;
 
-    // Last byte = simple sum checksum of bytes 0..18
-    let checksum = 0;
-    for (let i = 0; i < 19; i++) checksum += frame[i];
-    frame[19] = checksum & 0xFF;
-
-    showToast("Mengirim password auth ke BMS...", "info");
+    showToast(`Mengirim password '${password}' ke BMS...`, "info");
     console.log("[BLE Auth] Sending password frame:", Array.from(frame).map(b => b.toString(16).padStart(2,'0')).join(' '));
 
     writeCharacteristic(bleTxChar, frame)
         .then(() => {
-            console.log("[BLE Auth] Password frame sent, waiting for BMS response...");
-            // After auth, wait 1s then start querying
-            setTimeout(() => {
-                sendBmsQuery();
-            }, 1000);
+            console.log("[BLE Auth] Password sent OK.");
         })
         .catch(err => {
             console.error("[BLE Auth] Auth failed:", err);
@@ -760,22 +873,15 @@ function sendBmsAuth(password = '123456') {
 }
 
 // BMS protocol detection state
-let bmsProtocol = 'auto'; // 'auto', 'at', 'jk04', 'jk02'
+let bmsProtocol = 'jk04'; // default to JK04
 let atHeartbeatCount = 0;
+let jk04RxBuffer = new Uint8Array(0); // accumulate multi-chunk JK04 responses
+let jk04ExpectedLen = 0;
 
 function sendBmsQuery() {
     if (!bleTxChar) return;
-
-    if (bmsProtocol === 'at') {
-        // AT command mode - send GETINF to request full data
-        sendAtCommand('GETINF');
-    } else if (bmsProtocol === 'jk04') {
-        // JK04 binary protocol (AA 55 90 EB + 0x96)
-        sendJk04Query();
-    } else {
-        // Default: try JK02 binary (4E 57) 
-        sendJk02Query();
-    }
+    // JK04 0x97 = telemetry command (cell voltages, current, SOC, temperature)
+    sendJk04Query(0x97);
 }
 
 // AT command mode (text protocol)
@@ -787,16 +893,19 @@ function sendAtCommand(cmd) {
         .catch(err => console.error('[AT CMD] Error:', err));
 }
 
-// JK04 binary protocol query (AA 55 90 EB header)
-function sendJk04Query() {
-    // Cell info request: AA 55 90 EB 96 + 14 zeros + checksum
-    const frame = new Uint8Array(20);
+// Send JK04 command: AA 55 90 EB [cmd] 00 03 00...00 [cksum]
+// Checksum = (AA+55+90+EB+cmd) & 0xFF  (verified from protocol docs)
+function sendJk04Query(cmd = 0x97) {
+    const frame = new Uint8Array(21);
     frame[0] = 0xAA; frame[1] = 0x55; frame[2] = 0x90; frame[3] = 0xEB;
-    frame[4] = 0x96; // Cell info command
-    let cs = 0;
-    for (let i = 0; i < 19; i++) cs += frame[i];
-    frame[19] = cs & 0xFF;
-    console.log('[JK04] Sending cell info query:', Array.from(frame).map(b => b.toString(16).padStart(2,'0')).join(' '));
+    frame[4] = cmd;       // 0x97 = telemetry, 0x96 = settings
+    frame[5] = 0x00;
+    frame[6] = 0x03;      // source = BLE
+    // bytes 7-19 = 0x00 (padding)
+    const cksum = (0xAA + 0x55 + 0x90 + 0xEB + cmd) & 0xFF;
+    frame[20] = cksum;
+    const label = cmd === 0x97 ? 'telemetry(0x97)' : 'settings(0x96)';
+    console.log(`[JK04] Sending ${label}:`, Array.from(frame).map(b => b.toString(16).padStart(2,'0')).join(' '));
     writeCharacteristic(bleTxChar, frame)
         .catch(err => console.error('[JK04] Error:', err));
 }
