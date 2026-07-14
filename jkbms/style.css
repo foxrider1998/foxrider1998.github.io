@@ -908,26 +908,26 @@ input:checked + .lcd-toggle-slider:before {
    ---------------------------------------------------- */
 .lcd-toast {
     position: absolute;
-    top: 60px;
-    right: 16px;
+    top: 15px;
+    left: 50%;
+    transform: translate(-50%, -30px);
     background-color: #090a0d;
     border: 1px solid var(--lcd-green);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), 0 0 8px var(--lcd-green-glow);
-    padding: 6px 12px;
-    border-radius: 4px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8), 0 0 12px var(--lcd-green-glow);
+    padding: 8px 16px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
-    z-index: 1000;
+    gap: 8px;
+    font-size: 0.85rem;
+    z-index: 10000;
     opacity: 0;
-    transform: translateY(-20px);
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     pointer-events: none;
 }
 .lcd-toast.active {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
 }
 .lcd-toast.error-toast {
     border-color: var(--lcd-red);
