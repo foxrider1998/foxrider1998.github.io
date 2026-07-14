@@ -35,56 +35,69 @@ def read_int16_be(data, offset):
 
 def parse_packet_chunk(data):
     """
-    Membedah potongan byte dan memperbarui bms_state jika valid
+    Membedah potongan byte dan memperbarui bms_state jika valid.
+    Menggunakan offset biner yang tepat dari dump hex S20+:
+    55 AA EB 90 -> Header
+    - Voltase Sel (12S): offset 12 s/d 35 (2-byte BE per sel)
+    - Total Voltage: offset 50-51 (0.01V)
+    - Current/Arus: offset 54-55 (Signed BE, 0.01A)
+    - MOSFET Temp: offset 82-83 (Signed BE, 0.1C)
+    - SOC: offset 92 (1 byte)
     """
     global bms_state
-    if len(data) < 10:
+    if len(data) < 100:
         return False
         
-    cmd_id = data[4]
     updated = False
 
-    # 1. Paket Data Sel Baterai (Cell Voltages)
-    if cmd_id == 0x01 or (len(data) >= 40 and data[5] <= 24):
-        cells_temp = []
-        for i in range(12): # Maksimal 12S LiFePO4
-            off = 8 + (i * 2)
-            if off + 1 < len(data):
-                mv = read_uint16_be(data, off)
-                if 2000 <= mv <= 4300: # Sanity check LiFePO4
-                    cells_temp.append({
-                        "index": i + 1,
-                        "voltage": round(mv / 1000.0, 3),
-                        "balancing": False
-                    })
-        if len(cells_temp) >= 4:
-            bms_state["cells"] = cells_temp
+    # 1. Parsing Voltase 12 Sel (12 * 2 = 24 bytes) mulai dari offset 12
+    # Contoh hex: 0c 21 0c a0 0c f2 0b a0... -> 3105 mV, 3232 mV, 3314 mV, 2976 mV
+    cells_temp = []
+    for i in range(12):
+        off = 12 + (i * 2)
+        if off + 1 < len(data):
+            mv = read_uint16_be(data, off)
+            if 2000 <= mv <= 4300: # Sanity check LiFePO4
+                cells_temp.append({
+                    "index": i + 1,
+                    "voltage": round(mv / 1000.0, 3),
+                    "balancing": False
+                })
+    if len(cells_temp) >= 4:
+        bms_state["cells"] = cells_temp
+        updated = True
+
+    # 2. Parsing Total Pack Voltage (offset 50-51)
+    if 51 < len(data):
+        raw_vtg = read_uint16_be(data, 50)
+        vtg = raw_vtg * 0.01
+        if 30.0 <= vtg <= 45.0: # Range baterai 12S
+            bms_state["totalVoltage"] = round(vtg, 2)
             updated = True
 
-    # 2. Paket Status Umum (Total V, Arus, SOC, Suhu)
-    elif cmd_id == 0x02 or len(data) >= 80:
-        if 49 < len(data):
-            vtg = read_uint16_be(data, 48) * 0.01
-            if 30.0 <= vtg <= 45.0:
-                bms_state["totalVoltage"] = round(vtg, 2)
-                updated = True
-                
-        if 53 < len(data):
-            cur = read_int16_be(data, 52) * 0.01
-            if -150.0 <= cur <= 150.0:
-                bms_state["current"] = round(cur, 2)
-                
-        if 86 < len(data):
-            soc_val = data[86]
-            if 0 <= soc_val <= 100:
-                bms_state["soc"] = soc_val
-                
-        if 77 < len(data):
-            temp_c = read_int16_be(data, 76) * 0.1
-            if -10.0 <= temp_c <= 85.0:
-                bms_state["temperatures"]["mosfet"] = round(temp_c, 1)
+    # 3. Parsing Arus / Current (offset 54-55)
+    if 55 < len(data):
+        raw_cur = read_int16_be(data, 54)
+        cur = raw_cur * 0.01
+        if -150.0 <= cur <= 150.0:
+            bms_state["current"] = round(cur, 2)
+
+    # 4. Parsing Suhu MOSFET (offset 82-83)
+    if 83 < len(data):
+        raw_temp = read_int16_be(data, 82)
+        temp_c = raw_temp * 0.1
+        if -10.0 <= temp_c <= 85.0:
+            bms_state["temperatures"]["mosfet"] = round(temp_c, 1)
+
+    # 5. Parsing SOC (offset 92)
+    # Contoh hex: 0x5e = 94% atau 0x43 = 67%
+    if 92 < len(data):
+        soc_val = data[92]
+        if 0 <= soc_val <= 100:
+            bms_state["soc"] = soc_val
 
     return updated
+
 
 def harvest_latest_log():
     """
