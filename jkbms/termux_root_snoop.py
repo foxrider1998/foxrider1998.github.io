@@ -142,9 +142,12 @@ def decode_jk_bms_payload(data):
             offset += 2
         elif tag == 0x84:
             raw_cur = read_uint16_be(data, offset)
-            is_neg = (raw_cur & 0x8000) != 0
-            val = raw_cur & 0x7FFF
-            t["current"] = -(val * 0.01) if is_neg else (val * 0.01)
+            # Jika bit ke-15 aktif, artinya arus bernilai negatif (Discharging)
+            if raw_cur & 0x8000:
+                val = raw_cur & 0x7FFF
+                t["current"] = -(val * 0.01)
+            else:
+                t["current"] = raw_cur * 0.01
             offset += 2
         elif tag == 0x85:
             t["soc"] = data[offset]
@@ -195,7 +198,6 @@ def upload_to_cloud(telemetry, key="0d6013fe3fa362ab0388"):
         )
         with urllib.request.urlopen(req, timeout=3) as res:
             res.read()
-            # print(f" {GREEN}•{RESET}", end="", flush=True) # visual dot indicator for upload
     except Exception as e:
         print(f"\n[Cloud Error] Upload gagal: {e}")
 
@@ -205,7 +207,6 @@ last_upload_time = 0
 def render_ui(t):
     global last_upload_time
     
-    # Cetak dalam format log stream biasa (tidak perlu clear screen agar tidak kedip-kedip)
     vtg = t.get('totalVoltage', 0.0)
     curr = t.get('current', 0.0)
     soc = t.get('soc', 0)
@@ -227,94 +228,71 @@ def render_ui(t):
 
 
 def main():
-    print("Memulai sadap bluetooth log...")
+    print("Memulai sadap bluetooth log via Tshark...")
     
-    # Perintah su untuk membaca file secara live (tail -f)
-    cmd = ["su", "-c", "tail -f -c +0 /data/log/bt/btsnoop_hci.log"]
+    # Perintah su untuk membaca berkas btsnoop dan mengekstraksi payload data BLE secara live
+    # ffe1 / ffe2 adalah karakteristik data JKBMS
+    tshark_cmd = [
+        "su", "-c", 
+        "tshark -r /data/log/bt/btsnoop_hci.log -Y 'btatt.value' -T fields -e btatt.value -l"
+    ]
     
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    
-    buffer = bytearray()
+    proc = subprocess.Popen(tshark_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     
     try:
-        while True:
-            # Baca byte per byte dari output tail log secara non-blocking
-            byte = proc.stdout.read(1)
-            if not byte:
-                time.sleep(0.01)
-                continue
-            
-            buffer.extend(byte)
-            
-            # Cari marker awal JKBMS packet: 4E 57 (JK02) atau 55 AA (Legacy UART)
-            header_idx_4e57 = buffer.find(b'\x4e\x57')
-            header_idx_55aa = buffer.find(b'\x55\xaa')
-            
-            # Tentukan header mana yang muncul duluan
-            header_idx = -1
-            is_legacy_55aa = False
-            
-            if header_idx_4e57 != -1 and header_idx_55aa != -1:
-                if header_idx_4e57 < header_idx_55aa:
-                    header_idx = header_idx_4e57
-                else:
-                    header_idx = header_idx_55aa
-                    is_legacy_55aa = True
-            elif header_idx_4e57 != -1:
-                header_idx = header_idx_4e57
-            elif header_idx_55aa != -1:
-                header_idx = header_idx_55aa
-                is_legacy_55aa = True
-
-            if header_idx == -1:
-                if len(buffer) > 2000:
-                    del buffer[:-100]
-                continue
-            
-            # Geser kursor ke awal header
-            if header_idx > 0:
-                del buffer[:header_idx]
-                
-            if len(buffer) < 4:
-                continue
-            
-            if is_legacy_55aa:
-                # Dari analisis dump log Samsung S20+, frame legacy JKBMS berawalan 55 AA memiliki panjang payload tetap 120 bytes
-                packet_len = 120 
-            else:
-                # Format standard 4E 57 (panjang tertulis di byte ke-2 dan ke-3)
-                packet_len = (buffer[2] << 8) | buffer[3]
-
-            
-            if len(buffer) < packet_len:
+        for line in proc.stdout:
+            line = line.strip()
+            if not line:
                 continue
                 
-            packet = buffer[:packet_len]
-            del buffer[:packet_len]
-            
-            if is_legacy_55aa:
-                # Untuk format 55 AA, kita extract nilai sel (voltase, suhu, dll) di offset statis:
-                # Byte 4 s/d 35: Tegangan 16 Sel (2 byte BE per sel)
-                # Byte 38-39: MOSFET Temp, T1 Temp, T2 Temp, dll.
+            # Bersihkan jika ada beberapa value dalam satu baris (biasanya dipisahkan koma oleh tshark)
+            for hex_part in line.split(','):
                 try:
-                    telemetry = decode_legacy_55aa_payload(packet)
-                    if telemetry:
-                        render_ui(telemetry)
-                except Exception as e:
-                    pass
-            else:
-                # Parsing data standard 4E 57 jika checksum valid
-                if packet_len > 8:
-                    data_part = packet[:-4]
-                    rx_checksum = (packet[-4] << 24) | (packet[-3] << 16) | (packet[-2] << 8) | packet[-1]
-                    calculated_checksum = sum(data_part)
+                    raw_data = bytes.fromhex(hex_part)
+                except ValueError:
+                    continue
+                
+                # Cari marker awal JK BMS di dalam paket bersih: 4E 57 atau 55 AA
+                is_legacy = False
+                header_idx = -1
+                
+                # Cari 4E 57 atau 55 AA
+                idx_4e57 = raw_data.find(b'\x4e\x57')
+                idx_55aa = raw_data.find(b'\x55\xaa')
+                
+                if idx_4e57 != -1:
+                    header_idx = idx_4e57
+                elif idx_55aa != -1:
+                    header_idx = idx_55aa
+                    is_legacy = True
                     
-                    if calculated_checksum == rx_checksum:
-                        telemetry = decode_jk_bms_payload(data_part)
+                if header_idx == -1:
+                    continue
+                    
+                clean_packet = raw_data[header_idx:]
+                
+                if is_legacy:
+                    if len(clean_packet) >= 120:
+                        telemetry = decode_legacy_55aa_payload(clean_packet[:120])
                         if telemetry:
                             render_ui(telemetry)
-
-
+                else:
+                    if len(clean_packet) >= 11:
+                        # Extract length dari header 4E 57
+                        packet_len = (clean_packet[2] << 8) | clean_packet[3]
+                        if len(clean_packet) >= packet_len:
+                            payload_data = clean_packet[:packet_len]
+                            data_part = payload_data[:-4]
+                            
+                            # Verify checksum
+                            rx_checksum = (payload_data[-4] << 24) | (payload_data[-3] << 16) | (payload_data[-2] << 8) | payload_data[-1]
+                            calculated_checksum = sum(data_part)
+                            
+                            if calculated_checksum == rx_checksum:
+                                telemetry = decode_jk_bms_payload(data_part)
+                                if telemetry:
+                                    render_ui(telemetry)
+                    
     except KeyboardInterrupt:
         print("\nMonitoring dihentikan.")
         proc.terminate()
