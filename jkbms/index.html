@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JKBMS V19 LCD Dashboard</title>
+    <!-- Google Fonts: Orbitron (for digital clock/text) and JetBrains Mono (for numbers) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="outer-bezel">
+        <div class="inner-lcd-screen">
+            <div class="screen-glare"></div>
+            
+            <!-- HEADER BAR (Connection status, Mode selector) -->
+            <header class="lcd-header">
+                <div class="lcd-brand">
+                    <span class="brand-logo">极空</span>
+                    <span class="brand-text">JIKONG BMS</span>
+                </div>
+                
+                <div class="lcd-controls">
+                    <div class="lcd-control-item">
+                        <label for="mode-select">KONEKSI:</label>
+                        <select id="mode-select" class="lcd-select">
+                            <option value="webble">Browser Web Bluetooth</option>
+                            <option value="simulated">Virtual Simulator (Demo)</option>
+                        </select>
+                    </div>
+
+                    <div class="lcd-connection-status" id="connection-status-block">
+                        <span class="status-indicator-dot disconnected" id="status-dot"></span>
+                        <span class="status-text font-lcd" id="status-text">BMS DISCONNECTED</span>
+                    </div>
+
+                    <button id="reconnect-btn" class="lcd-action-btn">
+                        <i data-lucide="refresh-cw"></i> SAMBUNGKAN BT
+                    </button>
+                </div>
+            </header>
+
+            <!-- MAIN LCD CONTENT AREA -->
+            <div class="lcd-content">
+                
+                <!-- TAB 1: INFORMASI (Main LCD screen replica) -->
+                <div class="lcd-tab-pane active" id="tab-info">
+                    <div class="lcd-main-grid">
+                        
+                        <!-- Top Left: Total Voltage -->
+                        <div class="grid-cell cell-vtg">
+                            <div class="lcd-label-large"><i data-lucide="zap"></i> Vtg.</div>
+                            <div class="lcd-value-huge green-glow"><span id="info-voltage">00.00</span><span class="lcd-unit-large">V</span></div>
+                        </div>
+
+                        <!-- Top Right: Pack Current -->
+                        <div class="grid-cell cell-cur">
+                            <div class="lcd-label-large"><i data-lucide="arrow-right-left"></i> Cur.</div>
+                            <div class="lcd-value-huge green-glow" id="info-current-glow"><span id="info-current">0.0</span><span class="lcd-unit-large">A</span></div>
+                        </div>
+
+                        <!-- Center Left: SOC Circle -->
+                        <div class="grid-cell cell-soc">
+                            <div class="soc-circle-wrapper">
+                                <svg class="soc-svg" viewBox="0 0 120 120">
+                                    <circle class="soc-bg-ring" cx="60" cy="60" r="50"></circle>
+                                    <circle class="soc-fill-ring" id="soc-fill-ring" cx="60" cy="60" r="50" stroke-dasharray="314" stroke-dashoffset="314"></circle>
+                                </svg>
+                                <div class="soc-percentage">
+                                    <span id="info-soc">0</span><span class="pct">%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Center Right: Capacities -->
+                        <div class="grid-cell cell-caps">
+                            <div class="cap-row">
+                                <div class="lcd-value-large green-glow" id="info-capacity-tot">0.0</div>
+                                <div class="lcd-label-small">Bat-Capacity(Ah)</div>
+                            </div>
+                            <div class="cap-row separator-top-dashed">
+                                <div class="lcd-value-large green-glow" id="info-capacity-rem">0.0</div>
+                                <div class="lcd-label-small">Rem-Capacity(Ah)</div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Section: Grid of parameters -->
+                        <div class="grid-cell cell-bottom-left">
+                            <div class="param-row">
+                                <span class="lcd-label-small">Max.Cell:</span>
+                                <span class="lcd-value-small green-glow" id="info-max-cell">0.000V</span>
+                            </div>
+                            <div class="param-row">
+                                <span class="lcd-label-small">Min.Cell:</span>
+                                <span class="lcd-value-small green-glow" id="info-min-cell">0.000V</span>
+                            </div>
+                        </div>
+
+                        <div class="grid-cell cell-bottom-center">
+                            <div class="param-row">
+                                <span class="lcd-label-small">Temp:</span>
+                                <span class="lcd-value-small green-glow" id="info-temp">00°C</span>
+                            </div>
+                            <div class="param-row">
+                                <span class="lcd-label-small">Pwr(kw):</span>
+                                <span class="lcd-value-small green-glow" id="info-power">0.00</span>
+                            </div>
+                        </div>
+
+                        <div class="grid-cell cell-bottom-right">
+                            <div class="alarm-row">
+                                <span class="lcd-label-small">Alarm:</span>
+                                <span class="alarm-badge green-badge" id="info-alarm">NORMAL</span>
+                            </div>
+                            <div class="alarm-row">
+                                <span class="lcd-label-small">Packs:</span>
+                                <span class="lcd-value-small green-glow" id="info-packs">1</span>
+                            </div>
+                            <div class="alarm-row switch-indicators">
+                                <div>CHG: <span class="sw-ind-text" id="ind-chg">ON</span></div>
+                                <div>DCH: <span class="sw-ind-text" id="ind-dch">ON</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: PARAMETER (Cells Details Matrix) -->
+                <div class="lcd-tab-pane" id="tab-param">
+                    <div class="parameter-tab-layout">
+                        <!-- Top header of cells tab -->
+                        <div class="param-header-bar">
+                            <div class="param-header-item">
+                                <span class="lcd-label-small">Delta Voltase Sel:</span>
+                                <span class="lcd-value-medium green-glow" id="param-delta">0.000 V</span>
+                            </div>
+                            <div class="param-header-item">
+                                <span class="lcd-label-small">Arus Penyeimbang:</span>
+                                <span class="lcd-value-medium green-glow" id="param-balance-current">0.00 A</span>
+                            </div>
+                            <div class="param-header-item">
+                                <span class="lcd-label-small">Jumlah Siklus:</span>
+                                <span class="lcd-value-medium green-glow" id="param-cycles">0</span>
+                            </div>
+                        </div>
+
+                        <!-- Grid of 16-24 cells -->
+                        <div class="lcd-cells-grid" id="cells-grid">
+                            <div class="lcd-no-data">Menunggu data sel...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: SETELAN (Settings & soft-switches) -->
+                <div class="lcd-tab-pane" id="tab-sett">
+                    <div class="settings-tab-layout">
+                        <!-- Left pane: Soft Switches -->
+                        <div class="settings-pane-switches">
+                            <h3 class="pane-title"><i data-lucide="toggle-left"></i> Soft Switches</h3>
+                            
+                            <div class="lcd-switch-list">
+                                <div class="lcd-switch-item">
+                                    <div class="sw-details">
+                                        <span class="sw-title">Pengisian (CHG)</span>
+                                        <span class="sw-desc">Aktifkan relay input pengisian</span>
+                                    </div>
+                                    <label class="lcd-toggle">
+                                        <input type="checkbox" id="set-switch-charge">
+                                        <span class="lcd-toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="lcd-switch-item">
+                                    <div class="sw-details">
+                                        <span class="sw-title">Pengosongan (DCH)</span>
+                                        <span class="sw-desc">Aktifkan relay output beban</span>
+                                    </div>
+                                    <label class="lcd-toggle">
+                                        <input type="checkbox" id="set-switch-discharge">
+                                        <span class="lcd-toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="lcd-switch-item">
+                                    <div class="sw-details">
+                                        <span class="sw-title">Penyeimbang (BAL)</span>
+                                        <span class="sw-desc">Aktifkan fungsi penyeimbang aktif</span>
+                                    </div>
+                                    <label class="lcd-toggle">
+                                        <input type="checkbox" id="set-switch-balance">
+                                        <span class="lcd-toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- MOSFET & Sensor Probes temperatures -->
+                            <div class="lcd-temp-display">
+                                <h4 class="pane-subtitle"><i data-lucide="thermometer"></i> Detail Sensor Suhu</h4>
+                                <div class="temp-row">
+                                    <span>MOSFET:</span>
+                                    <span class="font-lcd green-glow" id="set-temp-mos">0.0 °C</span>
+                                </div>
+                                <div class="temp-row">
+                                    <span>Baterai T1:</span>
+                                    <span class="font-lcd green-glow" id="set-temp-t1">0.0 °C</span>
+                                </div>
+                                <div class="temp-row">
+                                    <span>Baterai T2:</span>
+                                    <span class="font-lcd green-glow" id="set-temp-t2">0.0 °C</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right pane: Parameters limits edit -->
+                        <div class="settings-pane-params">
+                            <div class="settings-pane-header">
+                                <h3 class="pane-title"><i data-lucide="settings"></i> Parameter Proteksi</h3>
+                                <div class="settings-sync-badge" id="settings-sync">
+                                    <i data-lucide="check-circle-2"></i> Sinkron
+                                </div>
+                            </div>
+
+                            <div class="lcd-input-grid">
+                                <div class="lcd-input-item">
+                                    <label for="set-cell-count">Jumlah Seri Sel</label>
+                                    <div class="lcd-input-wrapper">
+                                        <input type="number" id="set-cell-count" value="16" min="4" max="24">
+                                        <span class="lcd-input-unit">S</span>
+                                    </div>
+                                </div>
+                                <div class="lcd-input-item">
+                                    <label for="set-nominal-capacity">Kapasitas Nominal Pack</label>
+                                    <div class="lcd-input-wrapper">
+                                        <input type="number" id="set-nominal-capacity" value="280">
+                                        <span class="lcd-input-unit">Ah</span>
+                                    </div>
+                                </div>
+                                <div class="lcd-input-item">
+                                    <label for="set-cell-ov">Proteksi Overvoltage Sel</label>
+                                    <div class="lcd-input-wrapper">
+                                        <input type="number" id="set-cell-ov" value="3.650" step="0.005">
+                                        <span class="lcd-input-unit">V</span>
+                                    </div>
+                                </div>
+                                <div class="lcd-input-item">
+                                    <label for="set-cell-uv">Proteksi Undervoltage Sel</label>
+                                    <div class="lcd-input-wrapper">
+                                        <input type="number" id="set-cell-uv" value="2.500" step="0.005">
+                                        <span class="lcd-input-unit">V</span>
+                                    </div>
+                                </div>
+                                <div class="lcd-input-item">
+                                    <label for="set-max-charge">Arus Pengisian Maks</label>
+                                    <div class="lcd-input-wrapper">
+                                        <input type="number" id="set-max-charge" value="100">
+                                        <span class="lcd-input-unit">A</span>
+                                    </div>
+                                </div>
+                                <div class="lcd-input-item">
+                                    <label for="set-max-discharge">Arus Pengosongan Maks</label>
+                                    <div class="lcd-input-wrapper">
+                                        <input type="number" id="set-max-discharge" value="150">
+                                        <span class="lcd-input-unit">A</span>
+                                    </div>
+                                </div>
+                                <div class="lcd-input-item">
+                                    <label for="set-balance-start">Mulai Penyeimbangan</label>
+                                    <div class="lcd-input-wrapper">
+                                        <input type="number" id="set-balance-start" value="3.20" step="0.01">
+                                        <span class="lcd-input-unit">V</span>
+                                    </div>
+                                </div>
+                                <div class="lcd-input-item">
+                                    <label for="set-balance-diff">Batas Trigger Delta</label>
+                                    <div class="lcd-input-wrapper">
+                                        <input type="number" id="set-balance-diff" value="0.010" step="0.001">
+                                        <span class="lcd-input-unit">V</span>
+                                    </div>
+                                </div>
+                                <div class="lcd-input-item">
+                                    <label for="set-balance-current">Arus Maks Balancer</label>
+                                    <div class="lcd-input-wrapper">
+                                        <input type="number" id="set-balance-current" value="2.0" step="0.1">
+                                        <span class="lcd-input-unit">A</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="lcd-settings-actions">
+                                <button id="write-settings-btn" class="lcd-primary-btn">
+                                    <i data-lucide="send"></i> KIRIM KE BMS
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM LCD BUTTONS (Shaped like physical screen keys) -->
+            <footer class="lcd-footer">
+                <div class="lcd-nav">
+                    <button class="lcd-nav-btn active" id="btn-tab-info" data-target="tab-info">
+                        <span class="nav-text">INFORMASI</span>
+                    </button>
+                    <button class="lcd-nav-btn" id="btn-tab-param" data-target="tab-param">
+                        <span class="nav-text">PARAMETER</span>
+                    </button>
+                    <button class="lcd-nav-btn" id="btn-tab-sett" data-target="tab-sett">
+                        <span class="nav-text">SETELAN</span>
+                    </button>
+                </div>
+            </footer>
+            
+        </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div class="lcd-toast" id="toast">
+        <i data-lucide="info" id="toast-icon"></i>
+        <span id="toast-message">Notifikasi</span>
+    </div>
+
+    <!-- Initialize Lucide icons -->
+    <script>
+        lucide.createIcons();
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>

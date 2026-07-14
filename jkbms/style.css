@@ -1,0 +1,952 @@
+/* ====================================================================
+   JKBMS V19 LCD DIGITAL SCREEN STYLESHEET
+   High-Fidelity Premium Glass Hardware Theme
+   ==================================================================== */
+
+:root {
+    --lcd-bg-color: #030303;
+    --lcd-bezel-color: #0a0b0d;
+    
+    --lcd-green: #39ff14; /* Cyber Neon Green */
+    --lcd-green-dim: #166408;
+    --lcd-green-glow: rgba(57, 255, 20, 0.4);
+    
+    --lcd-white: #f1f5f9;
+    --lcd-grey: #64748b;
+    --lcd-border-color: rgba(255, 255, 255, 0.08);
+    
+    --lcd-red: #ff2a2a; /* Alarm Neon Red */
+    --lcd-red-glow: rgba(255, 42, 42, 0.4);
+    
+    --lcd-blue: #00d2ff;
+    --lcd-blue-glow: rgba(0, 210, 255, 0.35);
+    
+    --lcd-orange: #ff9f00;
+    --lcd-orange-glow: rgba(255, 159, 0, 0.3);
+
+    --font-digital: 'Share Tech Mono', 'JetBrains Mono', monospace;
+    --font-header: 'Orbitron', sans-serif;
+}
+
+/* RESET & CORE BODY SETUP */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: radial-gradient(circle at center, #1b1e2b 0%, #08090d 100%);
+    color: var(--lcd-white);
+    font-family: var(--font-digital);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    overflow: hidden;
+}
+
+/* ----------------------------------------------------
+   OUTER BEZEL (HIGH-END GLOSSY GLASS FRAME)
+   ---------------------------------------------------- */
+.outer-bezel {
+    background: linear-gradient(135deg, #18191f 0%, #090a0d 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 36px;
+    padding: 30px;
+    box-shadow: 
+        0 40px 110px -15px rgba(0, 0, 0, 0.95),
+        0 20px 40px -10px rgba(0, 0, 0, 0.7),
+        inset 0 2px 5px rgba(255, 255, 255, 0.12),
+        inset 0 -2px 10px rgba(0, 0, 0, 0.9);
+    width: 100%;
+    max-width: 1024px;
+    aspect-ratio: 4 / 3;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Metallic Bevel Ring */
+.outer-bezel::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 36px;
+    border: 2px solid rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* ----------------------------------------------------
+   INNER LCD SCREEN AREA (DEEP BLACK DISPLAY)
+   ---------------------------------------------------- */
+.inner-lcd-screen {
+    background-color: var(--lcd-bg-color);
+    border: 3px solid #040507;
+    border-radius: 12px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 
+        inset 0 0 40px rgba(0, 0, 0, 0.95),
+        0 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Realistic Glass Glare Reflection Overlay */
+.screen-glare {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.07) 0%, 
+        rgba(255, 255, 255, 0.04) 20%, 
+        rgba(255, 255, 255, 0) 45%, 
+        rgba(255, 255, 255, 0) 100%
+    );
+    z-index: 98;
+    pointer-events: none;
+}
+
+/* Digital CRT Scanline Grid Overlay */
+.inner-lcd-screen::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+    z-index: 97;
+    background-size: 100% 3px;
+    pointer-events: none;
+}
+
+/* ----------------------------------------------------
+   LCD HEADER BAR
+   ---------------------------------------------------- */
+.lcd-header {
+    height: 52px;
+    border-bottom: 1px solid var(--lcd-border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 18px;
+    z-index: 10;
+    background-color: rgba(255, 255, 255, 0.01);
+}
+
+.lcd-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-logo {
+    font-family: var(--font-header);
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--lcd-white);
+    letter-spacing: 0.5px;
+}
+
+.brand-text {
+    font-family: var(--font-header);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--lcd-grey);
+    letter-spacing: 1.5px;
+}
+
+.lcd-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.lcd-control-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--lcd-grey);
+    font-weight: bold;
+}
+
+.lcd-select {
+    background-color: #090a0d;
+    border: 1px solid var(--lcd-border-color);
+    color: var(--lcd-green);
+    padding: 2px 8px;
+    border-radius: 4px;
+    outline: none;
+    font-family: var(--font-digital);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.lcd-select:focus {
+    border-color: var(--lcd-green);
+}
+
+.lcd-connection-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--lcd-border-color);
+    background-color: rgba(255, 255, 255, 0.02);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.status-indicator-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+.status-indicator-dot.connected {
+    background-color: var(--lcd-green);
+    box-shadow: 0 0 6px var(--lcd-green);
+}
+.status-indicator-dot.connecting {
+    background-color: var(--lcd-orange);
+    box-shadow: 0 0 6px var(--lcd-orange);
+    animation: blink 0.8s infinite alternate;
+}
+.status-indicator-dot.disconnected {
+    background-color: var(--lcd-red);
+    box-shadow: 0 0 6px var(--lcd-red);
+}
+
+.status-text {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.lcd-action-btn {
+    background: none;
+    border: 1px solid var(--lcd-border-color);
+    color: var(--lcd-white);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: var(--font-digital);
+    font-size: 0.72rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.lcd-action-btn:hover {
+    border-color: var(--lcd-green);
+    color: var(--lcd-green);
+}
+.lcd-action-btn i {
+    width: 10px;
+    height: 10px;
+}
+
+/* ----------------------------------------------------
+   LCD CONTENT & NAVIGATION TABS
+   ---------------------------------------------------- */
+.lcd-content {
+    flex-grow: 1;
+    position: relative;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.lcd-tab-pane {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+.lcd-tab-pane.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ----------------------------------------------------
+   TAB 1: INFORMASI (MAIN HARDWARE SCREEN REPLICA)
+   ---------------------------------------------------- */
+.lcd-main-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1.1fr;
+    grid-template-rows: 1.1fr 1.4fr 1.1fr;
+    border: 1px solid var(--lcd-border-color);
+    height: 100%;
+}
+
+.grid-cell {
+    border-right: 1px solid var(--lcd-border-color);
+    border-bottom: 1px solid var(--lcd-border-color);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Outer cell border adjustments to match LCD segmentation */
+.cell-cur, .cell-caps, .cell-bottom-right {
+    border-right: none;
+}
+.cell-bottom-left, .cell-bottom-center, .cell-bottom-right {
+    border-bottom: none;
+}
+
+.cell-vtg {
+    grid-column: span 1;
+}
+.cell-cur {
+    grid-column: span 2;
+    padding-left: 20px;
+}
+.cell-soc {
+    grid-column: span 1;
+    align-items: center;
+}
+.cell-caps {
+    grid-column: span 2;
+    padding-left: 20px;
+    justify-content: space-around;
+}
+
+.cap-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    width: 100%;
+}
+
+.separator-top-dashed {
+    border-top: 1px dashed var(--lcd-border-color);
+    padding-top: 6px;
+}
+
+/* UI Value text glow */
+.green-glow {
+    color: var(--lcd-green);
+    text-shadow: 0 0 8px var(--lcd-green-glow);
+}
+
+.lcd-label-large {
+    font-size: 0.75rem;
+    color: var(--lcd-grey);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+}
+.lcd-label-large i {
+    width: 12px;
+    height: 12px;
+}
+
+.lcd-label-small {
+    font-size: 0.65rem;
+    color: var(--lcd-grey);
+    text-transform: uppercase;
+}
+
+.lcd-value-huge {
+    font-size: 2.2rem;
+    font-weight: 700;
+}
+.lcd-unit-large {
+    font-size: 0.95rem;
+    margin-left: 2px;
+    color: var(--lcd-grey);
+}
+
+.lcd-value-large {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+.lcd-value-medium {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+.lcd-value-small {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* SOC Circular Ring elements */
+.soc-circle-wrapper {
+    position: relative;
+    width: 90px;
+    height: 90px;
+}
+
+.soc-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.soc-bg-ring {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.03);
+    stroke-width: 9px;
+}
+
+.soc-fill-ring {
+    fill: none;
+    stroke: var(--lcd-green);
+    stroke-width: 9px;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease;
+    filter: drop-shadow(0 0 4px var(--lcd-green));
+}
+
+.soc-percentage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--lcd-white);
+    display: flex;
+    align-items: baseline;
+}
+.soc-percentage .pct {
+    font-size: 0.72rem;
+    color: var(--lcd-grey);
+}
+
+/* Bottom Grid layout fields */
+.param-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 4px;
+}
+.param-row:last-child {
+    margin-bottom: 0;
+}
+
+.alarm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.alarm-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0px 4px;
+    border-radius: 2px;
+}
+.green-badge {
+    background-color: rgba(57, 255, 20, 0.08);
+    border: 1px solid var(--lcd-green);
+    color: var(--lcd-green);
+}
+.red-badge {
+    background-color: rgba(255, 42, 42, 0.1);
+    border: 1px solid var(--lcd-red);
+    color: var(--lcd-red);
+    box-shadow: 0 0 6px var(--lcd-red-glow);
+    animation: flash 1s infinite alternate;
+}
+
+@keyframes flash {
+    0% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+.switch-indicators {
+    font-size: 0.65rem;
+    color: var(--lcd-grey);
+    display: flex;
+    gap: 8px;
+    border-top: 1px dashed var(--lcd-border-color);
+    padding-top: 3px;
+    width: 100%;
+}
+.sw-ind-text {
+    font-weight: 700;
+    color: var(--lcd-green);
+}
+.sw-ind-text.off {
+    color: var(--lcd-grey);
+}
+
+/* ----------------------------------------------------
+   TAB 2: PARAMETER (DETAILED CELL MATRIX)
+   ---------------------------------------------------- */
+.parameter-tab-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 12px;
+}
+
+.param-header-bar {
+    display: flex;
+    justify-content: space-between;
+    border: 1px solid var(--lcd-border-color);
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.01);
+}
+.param-header-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lcd-cells-grid {
+    border: 1px solid var(--lcd-border-color);
+    flex-grow: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: minmax(42px, 1fr);
+    overflow-y: auto;
+    max-height: 250px;
+}
+
+.lcd-cell-box {
+    border-right: 1px solid var(--lcd-border-color);
+    border-bottom: 1px solid var(--lcd-border-color);
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-digital);
+}
+
+/* Cell high/low voltage highlights */
+.lcd-cell-box.volt-highest {
+    background-color: rgba(255, 42, 42, 0.04);
+    border-left: 2px solid var(--lcd-red);
+}
+.lcd-cell-box.volt-highest .cell-v-num {
+    color: var(--lcd-red);
+    text-shadow: 0 0 6px var(--lcd-red-glow);
+}
+
+.lcd-cell-box.volt-lowest {
+    background-color: rgba(0, 210, 255, 0.04);
+    border-left: 2px solid var(--lcd-blue);
+}
+.lcd-cell-box.volt-lowest .cell-v-num {
+    color: var(--lcd-blue);
+    text-shadow: 0 0 6px var(--lcd-blue-glow);
+}
+
+.cell-v-num {
+    color: var(--lcd-green);
+    text-shadow: 0 0 6px var(--lcd-green-glow);
+    font-weight: 700;
+}
+
+.cell-bal-badge {
+    font-size: 0.55rem;
+    font-weight: 800;
+    padding: 0px 2px;
+    border-radius: 2px;
+}
+.cell-bal-badge.bal-in {
+    background-color: rgba(57, 255, 20, 0.1);
+    color: var(--lcd-green);
+    border: 1px solid var(--lcd-green);
+}
+.cell-bal-badge.bal-out {
+    background-color: rgba(255, 159, 0, 0.1);
+    color: var(--lcd-orange);
+    border: 1px solid var(--lcd-orange);
+}
+
+/* ----------------------------------------------------
+   TAB 3: SETELAN (SETTINGS & THRESHOLDS)
+   ---------------------------------------------------- */
+.settings-tab-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    height: 100%;
+    border: 1px solid var(--lcd-border-color);
+}
+
+.settings-pane-switches {
+    border-right: 1px solid var(--lcd-border-color);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.settings-pane-params {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.pane-title {
+    font-family: var(--font-header);
+    font-size: 0.85rem;
+    color: var(--lcd-white);
+    border-bottom: 1px solid var(--lcd-border-color);
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.pane-title i {
+    width: 12px;
+    height: 12px;
+    color: var(--lcd-green);
+}
+
+.pane-subtitle {
+    font-size: 0.72rem;
+    color: var(--lcd-grey);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    border-bottom: 1px dashed rgba(255,255,255,0.06);
+    padding-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.pane-subtitle i {
+    width: 10px;
+    height: 10px;
+}
+
+.lcd-switch-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.lcd-switch-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(255,255,255,0.01);
+    border: 1px solid rgba(255,255,255,0.03);
+    padding: 8px 10px;
+    border-radius: 4px;
+}
+
+.sw-details {
+    display: flex;
+    flex-direction: column;
+}
+.sw-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.sw-desc {
+    font-size: 0.6rem;
+    color: var(--lcd-grey);
+}
+
+/* Custom Switch Toggle */
+.lcd-toggle {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 18px;
+}
+.lcd-toggle input {
+    opacity: 0; width: 0; height: 0;
+}
+.lcd-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #090a0d;
+    border: 1px solid var(--lcd-border-color);
+    border-radius: 9px;
+    transition: 0.2s;
+}
+.lcd-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 10px;
+    width: 10px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--lcd-grey);
+    border-radius: 50%;
+    transition: 0.2s;
+}
+input:checked + .lcd-toggle-slider {
+    background-color: rgba(57, 255, 20, 0.05);
+    border-color: var(--lcd-green);
+}
+input:checked + .lcd-toggle-slider:before {
+    transform: translateX(18px);
+    background-color: var(--lcd-green);
+    box-shadow: 0 0 3px var(--lcd-green);
+}
+
+.lcd-temp-display {
+    margin-top: auto;
+}
+.temp-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+}
+
+/* Parameter edit grid styling */
+.settings-pane-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--lcd-border-color);
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+}
+.settings-pane-header .pane-title {
+    border-bottom: none; margin-bottom: 0; padding-bottom: 0;
+}
+
+.settings-sync-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--lcd-green);
+}
+.settings-sync-badge i {
+    width: 10px;
+    height: 10px;
+}
+.settings-sync-badge.dirty {
+    color: var(--lcd-orange);
+    animation: flash 1s infinite alternate;
+}
+
+.lcd-input-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    overflow-y: auto;
+    max-height: 190px;
+    padding-right: 4px;
+}
+
+.lcd-input-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.lcd-input-item label {
+    font-size: 0.6rem;
+    color: var(--lcd-grey);
+    text-transform: uppercase;
+}
+
+.lcd-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.lcd-input-wrapper input {
+    width: 100%;
+    background-color: #050608;
+    border: 1px solid var(--lcd-border-color);
+    color: var(--lcd-green);
+    font-family: var(--font-digital);
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 4px 6px;
+    padding-right: 20px;
+    border-radius: 4px;
+    outline: none;
+    text-align: right;
+    transition: border-color 0.2s;
+}
+.lcd-input-wrapper input:focus {
+    border-color: var(--lcd-green);
+    box-shadow: 0 0 4px var(--lcd-green-glow);
+}
+.lcd-input-unit {
+    position: absolute;
+    right: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--lcd-grey);
+}
+
+.lcd-settings-actions {
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.lcd-primary-btn {
+    background-color: rgba(57, 255, 20, 0.05);
+    border: 1px solid var(--lcd-green);
+    color: var(--lcd-green);
+    padding: 8px 20px;
+    font-family: var(--font-digital);
+    font-weight: 700;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+.lcd-primary-btn:hover {
+    background-color: rgba(57, 255, 20, 0.12);
+    box-shadow: 0 0 8px var(--lcd-green-glow);
+}
+
+/* ----------------------------------------------------
+   LCD FOOTER NAVIGATION BAR (HIGH-FIDELITY TRAPEZOID BUTTONS)
+   ---------------------------------------------------- */
+.lcd-footer {
+    height: 48px;
+    border-top: 1px solid var(--lcd-border-color);
+    display: flex;
+    justify-content: center;
+    background-color: #040507;
+    z-index: 10;
+}
+
+.lcd-nav {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    height: 100%;
+    width: 100%;
+    max-width: 500px;
+    position: relative;
+    padding: 0 10px;
+}
+
+/* Slanted trapezoidal buttons custom shape implementation */
+.lcd-nav-btn {
+    background-color: var(--lcd-border-color); /* outer outline color */
+    border: none;
+    color: var(--lcd-grey);
+    font-family: var(--font-header);
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    outline: none;
+    position: relative;
+    height: 100%;
+    width: 32%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+/* Button inner body pseudo-element */
+.lcd-nav-btn::before {
+    content: "";
+    position: absolute;
+    top: 1px; left: 1px; right: 1px; bottom: 0px; /* outline borders thickness */
+    background-color: #090a0d; /* inner button default color */
+    z-index: 1;
+    transition: all 0.2s ease;
+}
+
+.lcd-nav-btn span.nav-text {
+    position: relative;
+    z-index: 2; /* keep text on top */
+}
+
+/* Apply uniform clip polygons to both button and pseudo-element */
+#btn-tab-info, #btn-tab-info::before {
+    clip-path: polygon(14% 0%, 100% 0%, 100% 100%, 0% 100%);
+}
+#btn-tab-info {
+    margin-right: -8px;
+}
+
+#btn-tab-param, #btn-tab-param::before {
+    clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+    z-index: 2;
+}
+
+#btn-tab-sett, #btn-tab-sett::before {
+    clip-path: polygon(0% 0%, 86% 0%, 100% 100%, 0% 100%);
+    margin-left: -8px;
+}
+
+/* Active tab button states */
+.lcd-nav-btn.active {
+    background-color: var(--lcd-green); /* outer outline becomes glowing green */
+    color: var(--lcd-green);
+    text-shadow: 0 0 6px var(--lcd-green-glow);
+}
+.lcd-nav-btn.active::before {
+    background-color: rgba(57, 255, 20, 0.04); /* slight green tint */
+}
+
+.lcd-nav-btn:hover:not(.active) {
+    color: var(--lcd-white);
+}
+
+/* ----------------------------------------------------
+   NOTIFICATION TOAST (DIGITAL RED ALERT)
+   ---------------------------------------------------- */
+.lcd-toast {
+    position: absolute;
+    top: 60px;
+    right: 16px;
+    background-color: #090a0d;
+    border: 1px solid var(--lcd-green);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), 0 0 8px var(--lcd-green-glow);
+    padding: 6px 12px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+}
+.lcd-toast.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+.lcd-toast.error-toast {
+    border-color: var(--lcd-red);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), 0 0 8px var(--lcd-red-glow);
+}
+.lcd-toast.error-toast i, .lcd-toast.error-toast span {
+    color: var(--lcd-red);
+    text-shadow: 0 0 4px var(--lcd-red-glow);
+}
+.lcd-toast.success-toast {
+    border-color: var(--lcd-green);
+}
+.lcd-toast.success-toast i, .lcd-toast.success-toast span {
+    color: var(--lcd-green);
+    text-shadow: 0 0 4px var(--lcd-green-glow);
+}
+.lcd-toast i {
+    width: 12px; height: 12px;
+}
+.lcd-toast span {
+    font-weight: 700;
+}
