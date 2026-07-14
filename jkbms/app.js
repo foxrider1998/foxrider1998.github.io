@@ -521,7 +521,7 @@ async function triggerHandshakeStep1() {
             const server1 = await gatekeeper.gatt.connect();
             const service1 = await server1.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
             const char1 = await service1.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-            await writeCharacteristic(char1, CMD_MODBUS_POLL);
+            await writeCharacteristic(char1, CMD_JK02_POLL);
             
             await new Promise(r => setTimeout(r, 1000));
             gatekeeper.gatt.disconnect();
@@ -553,8 +553,8 @@ async function triggerHandshakeStep1() {
         const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
         const char = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
 
-        // Kirim Modbus poll untuk membangunkan MCU BMS
-        await writeCharacteristic(char, CMD_MODBUS_POLL);
+        // Kirim JK02 status poll untuk membangunkan MCU BMS
+        await writeCharacteristic(char, CMD_JK02_POLL);
         
         // Jeda agar transmisi tuntas dan MCU membuka gerbang EZ BT Power
         await new Promise(r => setTimeout(r, 1000));
