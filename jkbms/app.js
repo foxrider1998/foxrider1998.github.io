@@ -844,16 +844,11 @@ const CMD_MODBUS_POLL = new Uint8Array([
 
 function sendJk02Poll() {
     if (!bleTxChar) return;
-    const isModbusBms = bleDevice && bleDevice.name && bleDevice.name.includes("EZ BT");
-    if (isModbusBms) {
-        console.log('[Modbus] Sending Modbus poll trigger to EZ BT Power...');
-        writeCharacteristic(bleTxChar, CMD_MODBUS_POLL)
-            .catch(err => console.error('[Modbus] Poll error:', err));
-    } else {
-        console.log('[JK02] Sending standard poll: 4E 57 00 13 ...');
-        writeCharacteristic(bleTxChar, CMD_JK02_POLL)
-            .catch(err => console.error('[JK02] Poll error:', err));
-    }
+    // Berdasarkan btsnoop log, device '51210CN3E000576' menggunakan Modbus RTU payload!
+    // Kita kirim Modbus poll trigger agar device merespons.
+    console.log('[BMS Poll] Sending Modbus poll trigger to JKBMS...');
+    writeCharacteristic(bleTxChar, CMD_MODBUS_POLL)
+        .catch(err => console.error('[Modbus] Poll error:', err));
 }
 
 function sendBmsQuery() {
