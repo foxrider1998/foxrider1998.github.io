@@ -270,14 +270,15 @@ def upload_to_cloud(bin_id, device_name, address):
         print(f"[Error] Cloud upload failed: {e}")
 
 async def main():
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         print("==========================================================")
         print("     JIKONG BMS TERMUX BLUETOOTH TO CLOUD BRIDGE          ")
         print("==========================================================")
         print("Penggunaan:")
         print("  python termux_ble_bridge.py [MAC_BMS] [BIN_ID_NPOINT]")
         print("\nContoh:")
-        print("  python termux_ble_bridge.py AA:BB:CC:DD:EE:FF 0d6013fe3fa362ab0388")
+        print("  python termux_ble_bridge.py AA:BB:CC:DD:EE:FF")
+        print("  (Otomatis menggunakan Key default: 0d6013fe3fa362ab0388)")
         print("==========================================================")
         
         print("\nMencari perangkat Jikong BMS di sekitar Anda...")
@@ -292,7 +293,7 @@ async def main():
         sys.exit(1)
 
     mac_address = sys.argv[1]
-    bin_id = sys.argv[2]
+    bin_id = sys.argv[2] if len(sys.argv) >= 3 else '0d6013fe3fa362ab0388'
 
     print(f"Menghubungkan ke JKBMS [{mac_address}]...")
     client = BleakClient(mac_address)
