@@ -3,6 +3,8 @@ import time
 import os
 import sys
 import subprocess
+import urllib.request
+import json
 
 # ANSI escape codes for coloring
 GREEN = "\033[92m"
@@ -10,14 +12,6 @@ RED = "\033[91m"
 BLUE = "\033[94m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
-
-def clear_screen():
-    os.system('clear' if os.name == 'posix' else 'cls')
-
-def draw_bar(percentage, length=20):
-    filled = int(round(length * percentage / 100))
-    bar = "█" * filled + "░" * (length - filled)
-    return f"[{bar}] {percentage}%"
 
 def read_uint16_be(data, offset):
     return (data[offset] << 8) | data[offset + 1]
@@ -29,24 +23,10 @@ def read_int16_be(data, offset):
 def read_uint32_be(data, offset):
     return (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3]
 
-def read_int32_be(data, offset):
-    val = (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3]
-    return val - 4294967296 if val > 2147483647 else val
-
-def parse_warning_flags(flags):
-    warnings = []
-    if flags & (1 << 0): warnings.append("Low Single Cell Voltage")
-    if flags & (1 << 1): warnings.append("Overpack Voltage")
-    if flags & (1 << 2): warnings.append("Underpack Voltage")
-    if flags & (1 << 3): warnings.append("Overtemp")
-    return warnings
-
 def decode_legacy_55aa_payload(data):
     # Struktur JKBMS Legacy 55 AA berdasarkan analisis dump btsnoop Samsung S20+ live:
     # 55 AA EB 90 (Header) -> disusul status bytes
     # Voltase Sel 1-16: berturut-turut bertipe 2-byte BE (mV) dimulai dari offset 8:
-    # Sel 1: data[8..9], Sel 2: data[10..11], Sel 3: data[12..13] dst.
-    # Contoh raw hex: "0c 4d 0c a7 0c 20 0c a4" -> 3149 mV, 3239 mV, 3104 mV, 3236 mV (SANGAT COCOK DENGAN DASHBOARD!)
     t = {
         "cells": [],
         "temperatures": {},
@@ -67,7 +47,6 @@ def decode_legacy_55aa_payload(data):
                     })
         
         # MOSFET & Sensor Temperature: Terletak di offset 76-77
-        # Contoh raw hex: "0c d9" -> 3289 -> 32.8 °C
         if 77 < len(data):
             raw_temp = read_int16_be(data, 76)
             t["temperatures"]["mosfet"] = raw_temp * 0.1
@@ -83,7 +62,6 @@ def decode_legacy_55aa_payload(data):
             t["current"] = read_int16_be(data, 52) * 0.01
             
         # SOC: Terletak di offset 86
-        # Contoh raw hex: "5e" -> 94%
         if 86 < len(data):
             t["soc"] = data[86]
         else:
@@ -93,8 +71,6 @@ def decode_legacy_55aa_payload(data):
         return t
     except Exception as e:
         return None
-
-
 
 def decode_jk_bms_payload(data):
     cmd_type = data[8]
@@ -109,8 +85,7 @@ def decode_jk_bms_payload(data):
         "temperatures": {},
         "switches": {}
     }
-    s = {}
-
+    
     while offset < length:
         tag = data[offset]
         offset += 1
@@ -164,18 +139,13 @@ def decode_jk_bms_payload(data):
         elif tag == 0x87:
             offset += 2
         else:
-            # Skip unknown tags
             offset += 2
 
-    # Derived calculations
     if t["cells"]:
         t["cells"].sort(key=lambda x: x["index"])
     t["power"] = t.get("totalVoltage", 0.0) * t.get("current", 0.0)
     
     return t
-
-import urllib.request
-import json
 
 def upload_to_cloud(telemetry, key="0d6013fe3fa362ab0388"):
     url = f"https://api.npoint.io/{key}"
@@ -199,9 +169,8 @@ def upload_to_cloud(telemetry, key="0d6013fe3fa362ab0388"):
         with urllib.request.urlopen(req, timeout=3) as res:
             res.read()
     except Exception as e:
-        print(f"\n[Cloud Error] Upload gagal: {e}")
+        pass
 
-# Rate limiter untuk cloud upload (max 1x per 3 detik)
 last_upload_time = 0
 
 def render_ui(t):
@@ -213,86 +182,89 @@ def render_ui(t):
     temp = t.get('temperatures', {}).get('mosfet', 0.0)
     
     cells = t.get('cells', [])
-    cell_v_str = ", ".join([f"C{c['index']}:{c['voltage']:.3f}V" for c in cells[:8]]) # 8 sel pertama
+    cell_v_str = ", ".join([f"C{c['index']}:{c['voltage']:.3f}V" for c in cells[:8]])
     if len(cells) > 8:
         cell_v_str += "..."
 
     timestamp = time.strftime("%H:%M:%S")
     print(f"[{timestamp}] V={vtg:.2f}V | I={curr:+.2f}A | SOC={soc}% | Temp={temp:.1f}°C | {cell_v_str}")
     
-    # Upload ke cloud secara periodik
     now = time.time()
     if now - last_upload_time >= 3.0:
         last_upload_time = now
         upload_to_cloud(t)
 
-
 def main():
-    print("Memulai sadap bluetooth log via Tshark...")
+    print("Memulai sadap btsnoop log secara native (PCAP parser)...")
     
-    # Perintah su untuk membaca berkas btsnoop dan mengekstraksi payload data BLE secara live
-    # ffe1 / ffe2 adalah karakteristik data JKBMS
-    tshark_cmd = [
-        "su", "-c", 
-        "tshark -r /data/log/bt/btsnoop_hci.log -Y 'btatt.value' -T fields -e btatt.value -l"
-    ]
+    # Membaca live log
+    cmd = ["su", "-c", "tail -f -c +0 /data/log/bt/btsnoop_hci.log"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     
-    proc = subprocess.Popen(tshark_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    # 1. Skip Btsnoop File Header (16 bytes)
+    header = proc.stdout.read(16)
+    if len(header) < 16 or not header.startswith(b'btsnoop\0'):
+        print("[Error] Format file log btsnoop tidak valid.")
+        proc.terminate()
+        sys.exit(1)
+        
+    print("Header btsnoop terverifikasi. Menunggu paket data...")
     
     try:
-        for line in proc.stdout:
-            line = line.strip()
-            if not line:
+        while True:
+            # 2. Baca Record Header (24 bytes) per paket
+            rec_hdr = proc.stdout.read(24)
+            if len(rec_hdr) < 24:
+                time.sleep(0.05)
                 continue
                 
-            # Bersihkan jika ada beberapa value dalam satu baris (biasanya dipisahkan koma oleh tshark)
-            for hex_part in line.split(','):
-                try:
-                    raw_data = bytes.fromhex(hex_part)
-                except ValueError:
-                    continue
+            # Parse record length
+            incl_len = read_uint32_be(rec_hdr, 4)
+            
+            # 3. Baca payload asli paket (incl_len bytes)
+            payload = proc.stdout.read(incl_len)
+            if len(payload) < incl_len:
+                continue
                 
-                # Cari marker awal JK BMS di dalam paket bersih: 4E 57 atau 55 AA
-                is_legacy = False
-                header_idx = -1
+            # Filter hanya data yang berisi JKBMS header: 4E 57 atau 55 AA
+            is_legacy = False
+            header_idx = -1
+            
+            idx_4e57 = payload.find(b'\x4e\x57')
+            idx_55aa = payload.find(b'\x55\xaa')
+            
+            if idx_4e57 != -1:
+                header_idx = idx_4e57
+            elif idx_55aa != -1:
+                header_idx = idx_55aa
+                is_legacy = True
                 
-                # Cari 4E 57 atau 55 AA
-                idx_4e57 = raw_data.find(b'\x4e\x57')
-                idx_55aa = raw_data.find(b'\x55\xaa')
+            if header_idx == -1:
+                continue
                 
-                if idx_4e57 != -1:
-                    header_idx = idx_4e57
-                elif idx_55aa != -1:
-                    header_idx = idx_55aa
-                    is_legacy = True
-                    
-                if header_idx == -1:
-                    continue
-                    
-                clean_packet = raw_data[header_idx:]
-                
-                if is_legacy:
-                    if len(clean_packet) >= 120:
-                        telemetry = decode_legacy_55aa_payload(clean_packet[:120])
-                        if telemetry:
-                            render_ui(telemetry)
-                else:
-                    if len(clean_packet) >= 11:
-                        # Extract length dari header 4E 57
-                        packet_len = (clean_packet[2] << 8) | clean_packet[3]
-                        if len(clean_packet) >= packet_len:
-                            payload_data = clean_packet[:packet_len]
-                            data_part = payload_data[:-4]
-                            
-                            # Verify checksum
-                            rx_checksum = (payload_data[-4] << 24) | (payload_data[-3] << 16) | (payload_data[-2] << 8) | payload_data[-1]
-                            calculated_checksum = sum(data_part)
-                            
-                            if calculated_checksum == rx_checksum:
-                                telemetry = decode_jk_bms_payload(data_part)
-                                if telemetry:
-                                    render_ui(telemetry)
-                    
+            # Extract data paket JKBMS yang bersih dari enkapsulasi pcap
+            clean_packet = payload[header_idx:]
+            
+            if is_legacy:
+                if len(clean_packet) >= 120:
+                    telemetry = decode_legacy_55aa_payload(clean_packet[:120])
+                    if telemetry:
+                        render_ui(telemetry)
+            else:
+                if len(clean_packet) >= 11:
+                    packet_len = (clean_packet[2] << 8) | clean_packet[3]
+                    if len(clean_packet) >= packet_len:
+                        payload_data = clean_packet[:packet_len]
+                        data_part = payload_data[:-4]
+                        
+                        rx_checksum = (payload_data[-4] << 24) | (payload_data[-3] << 16) | (payload_data[-2] << 8) | payload_data[-1]
+                        calculated_checksum = sum(data_part)
+                        
+                        if calculated_checksum == rx_checksum:
+                            telemetry = decode_jk_bms_payload(data_part)
+                            if telemetry:
+                                render_ui(telemetry)
+
     except KeyboardInterrupt:
         print("\nMonitoring dihentikan.")
         proc.terminate()
