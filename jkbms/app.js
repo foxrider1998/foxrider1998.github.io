@@ -573,9 +573,9 @@ function connectWebBle() {
         showToast("Terhubung! Mengirim auth password...", "success");
         debugPacketCount = 0; // reset counter
 
-        // Send auth password first, THEN start periodic queries
+        // Send auth password first, THEN start periodic queries (every 1 second)
         sendBmsAuth('123456');
-        bleQueryTimer = setInterval(sendBmsQuery, 2000);
+        bleQueryTimer = setInterval(sendBmsQuery, 1000);
         
         // Automatically start Cloud Broadcast when Bluetooth connects!
         switchBroadcast.checked = true;
