@@ -19,6 +19,7 @@ let rxBuffer = new Uint8Array(0);
 // Cloud remote sync variables
 let remotePollTimer = null;
 let broadcastTimer = null;
+let bleDataReady = false; // Only true after first successful BLE frame parsed
 
 // Local State (for Web Bluetooth or local simulation)
 let localBmsState = {
@@ -833,7 +834,11 @@ function handleIncomingBleData(chunk) {
 
 function decodeJkBmsPacket(data) {
     let cmdType = data[8];
-    if (cmdType !== 0x06) return;
+    console.log(`[BLE Parser] decodeJkBmsPacket called, cmdType=0x${cmdType.toString(16).toUpperCase()}, length=${data.length}`);
+    if (cmdType !== 0x06) {
+        console.warn(`[BLE Parser] Ignoring non-status packet cmdType=0x${cmdType.toString(16).toUpperCase()}`);
+        return;
+    }
 
     let offset = 11;
     let length = data.length;
@@ -1018,6 +1023,10 @@ function decodeJkBmsPacket(data) {
     }
 
     t.soc = Math.round((t.remainingCapacity / s.nominalCapacity) * 100);
+    if (t.soc > 100) t.soc = 100;
+    
+    bleDataReady = true; // Mark that we have real BLE data
+    console.log(`[BLE Parser] ✅ Parse OK! Cells=${t.cells.length}, V=${t.totalVoltage}V, I=${t.current}A, SOC=${t.soc}%`);
     updateUI(localBmsState);
 }
 
@@ -1179,14 +1188,22 @@ function startBroadcasting(binId) {
             return;
         }
         
+        // Only upload to cloud when REAL BLE data has been successfully parsed
+        if (!bleDataReady) {
+            console.log("[Cloud] Waiting for real BLE data before uploading...");
+            return;
+        }
+        
+        const payload = JSON.stringify(localBmsState);
+        console.log(`[Cloud] Uploading real BLE data to npoint.io (${localBmsState.telemetry.cells.length} cells, ${localBmsState.telemetry.totalVoltage}V)`);
         fetch(`https://api.npoint.io/${binId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(localBmsState)
+            body: payload
         })
         .then(res => res.json())
-        .then(() => console.log("Broadcasted telemetry to cloud."))
-        .catch(err => console.error("Cloud broadcast failed:", err));
+        .then(() => console.log("[Cloud] ✅ Upload sukses!"))
+        .catch(err => console.error("[Cloud] Upload gagal:", err));
     }, 5000);
 }
 
