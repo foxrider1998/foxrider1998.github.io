@@ -562,7 +562,10 @@ async function triggerHandshakeStep1() {
         // Putus koneksi agar tidak memacetkan BLE chip
         device.gatt.disconnect();
         console.log("[Tahap 1] Selesai. Gerbang pemicu diputus.");
-        showToast("BMS berhasil dibangunkan! Sekarang silakan klik tombol 2. ALIRKAN DATA.", "success");
+        
+        // Set stage ke ready_to_stream
+        handshakeStage = 'ready_to_stream';
+        showToast("BMS berhasil dibangunkan! Sekarang silakan klik tombol SAMBUNGKAN BT sekali lagi untuk mengalirkan data.", "success");
         
         bleConnectionStatus = 'disconnected';
         updateUI(localBmsState);
@@ -574,6 +577,7 @@ async function triggerHandshakeStep1() {
         updateUI(localBmsState);
     });
 }
+
 
 // Fungsi pembantu untuk mengkoneksikan dan menyedot data langsung dari objek BluetoothDevice yang terekam
 function connectToEzBtDeviceDirect(device) {
@@ -1911,13 +1915,18 @@ if (remoteKeyInput) {
     });
 }
 
-// Bind button to connect directly to EZ BT Power stream
+// Bind button to connect using smart two-stage handshake dispatcher
 reconnectBtn.addEventListener('click', () => {
     if (localBmsState.mode === 'webble') {
         if (bleConnectionStatus === 'disconnected') {
-            triggerHandshakeStep2(); // LANGSUNG CONNECT KE EZ BT POWER DATA STREAM
+            if (handshakeStage === 'ready_to_stream') {
+                triggerHandshakeStep2(); // 2. STREAM via EZ BT Power
+            } else {
+                triggerHandshakeStep1(); // 1. WAKE UP via 51210
+            }
         } else {
             disconnectWebBle();
+            handshakeStage = 'idle';
         }
     }
 });
