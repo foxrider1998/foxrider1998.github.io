@@ -1150,9 +1150,9 @@ function stopBroadcasting() {
 function startRemotePolling() {
     if (remotePollTimer) clearInterval(remotePollTimer);
     
-    // Check local storage for previously used key to prefill input
-    let savedKey = localStorage.getItem('jkbms_remote_key_input');
-    if (savedKey && !remoteKeyInput.value) {
+    // Check local storage for previously used key to prefill input, fallback to default bin
+    let savedKey = localStorage.getItem('jkbms_remote_key_input') || '0d6013fe3fa362ab0388';
+    if (!remoteKeyInput.value) {
         remoteKeyInput.value = savedKey;
     }
 
