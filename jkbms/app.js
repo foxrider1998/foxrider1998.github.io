@@ -570,11 +570,12 @@ function connectWebBle() {
             address: bleDevice.id
         };
         
-        showToast("Terhubung! Menunggu data JKBMS...", "success");
+        showToast("Terhubung! Mengirim auth password...", "success");
         debugPacketCount = 0; // reset counter
 
+        // Send auth password first, THEN start periodic queries
+        sendBmsAuth('123456');
         bleQueryTimer = setInterval(sendBmsQuery, 2000);
-        sendBmsQuery(); 
         
         // Automatically start Cloud Broadcast when Bluetooth connects!
         switchBroadcast.checked = true;
@@ -596,7 +597,17 @@ function onBleNotificationReceived(event) {
     debugPacketCount++;
     if (debugPacketCount <= 15) {
         const hex = Array.from(chunk).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-        showToast(`Menerima: ${chunk.length} bytes (${hex})`, "success");
+        showToast(`Menerima: ${chunk.length} bytes [${hex}]`, "success");
+    }
+
+    // Detect JKBMS auth challenge: AA 55 90 EB = BMS asking for password
+    if (chunk.length === 4 &&
+        chunk[0] === 0xAA && chunk[1] === 0x55 &&
+        chunk[2] === 0x90 && chunk[3] === 0xEB) {
+        console.log("[BLE Auth] BMS requested authentication, sending password...");
+        showToast("BMS minta password! Mengirim '123456'...", "info");
+        sendBmsAuth('123456');
+        return;
     }
     
     handleIncomingBleData(chunk);
@@ -637,9 +648,51 @@ function disconnectWebBle() {
     updateUI(localBmsState);
 }
 
-// ----------------------------------------------------
-// JIKONG BINARY PROTOCOL DECODER & ENCODER (Client-side)
-// ----------------------------------------------------
+// ====================================================
+// JKBMS PASSWORD AUTH (AA 55 90 EB protocol)
+// Some JKBMS units require password auth before responding to queries.
+// The BMS sends 4 bytes (AA 55 90 EB) on connect to indicate auth is needed.
+// ====================================================
+function sendBmsAuth(password = '123456') {
+    if (!bleTxChar) return;
+
+    // AA 55 90 EB = JK BMS activation / auth header
+    // Followed by password bytes in ASCII, padded to 20 bytes total
+    const pwBytes = Array.from(password).map(c => c.charCodeAt(0));
+    const frame = new Uint8Array(20);
+    frame[0] = 0xAA;
+    frame[1] = 0x55;
+    frame[2] = 0x90;
+    frame[3] = 0xEB;
+
+    // Write password length and password bytes
+    frame[4] = pwBytes.length;
+    for (let i = 0; i < pwBytes.length && i < 14; i++) {
+        frame[5 + i] = pwBytes[i];
+    }
+
+    // Last byte = simple sum checksum of bytes 0..18
+    let checksum = 0;
+    for (let i = 0; i < 19; i++) checksum += frame[i];
+    frame[19] = checksum & 0xFF;
+
+    showToast("Mengirim password auth ke BMS...", "info");
+    console.log("[BLE Auth] Sending password frame:", Array.from(frame).map(b => b.toString(16).padStart(2,'0')).join(' '));
+
+    writeCharacteristic(bleTxChar, frame)
+        .then(() => {
+            console.log("[BLE Auth] Password frame sent, waiting for BMS response...");
+            // After auth, wait 1s then start querying
+            setTimeout(() => {
+                sendBmsQuery();
+            }, 1000);
+        })
+        .catch(err => {
+            console.error("[BLE Auth] Auth failed:", err);
+            showToast("Auth gagal: " + err.message, "error");
+        });
+}
+
 function sendBmsQuery() {
     if (!bleTxChar) return;
 
