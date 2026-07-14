@@ -625,7 +625,7 @@ function connectToEzBtDeviceDirect(device) {
         bleConnectionStatus = 'connected';
         localBmsState.connectionStatus = 'connected';
         localBmsState.connectedDevice = { name: bleDevice.name, address: bleDevice.id };
-        await writeCharacteristic(bleTxChar, CMD_MODBUS_POLL);
+        await writeCharacteristic(bleTxChar, CMD_JK02_POLL);
         showToast("Auto-Connect Sukses! Data telemetry mengalir.", "success");
         bleQueryTimer = setInterval(sendJk02Poll, 2000);
         updateUI(localBmsState);
@@ -714,9 +714,10 @@ function triggerHandshakeStep2() {
             address: bleDevice.id
         };
 
-        // Kirim Modbus trigger di pipa passthrough yang baru terbuka
-        console.log("[Modbus] Mengirim wake-up / poll trigger awal ke JKBMS...");
-        await writeCharacteristic(bleTxChar, CMD_MODBUS_POLL);
+        // Kirim JK02 status poll trigger di pipa passthrough yang baru terbuka
+        console.log("[JK02] Mengirim status poll trigger awal ke JKBMS...");
+        await writeCharacteristic(bleTxChar, CMD_JK02_POLL);
+
         
         showToast("Terkoneksi! Aliran data aktif.", "success");
         debugPacketCount = 0;
@@ -988,29 +989,22 @@ let atHeartbeatCount = 0;
 let jk04RxBuffer = new Uint8Array(0); // accumulate multi-chunk JK04 responses
 let jk04ExpectedLen = 0;
 
-// ── JK02 Telemetry Poll ─────────────────────────────────────────────
-// Request frame for JK02/NW protocol — 20 bytes, fits in one MTU.
-// Triggers BMS to respond with a 4E 57 00 13 TLV data frame.
+// Standard JK02 status request query frame (22 bytes) with checksum:
+// 4E 57 (Header) 00 16 (Length=22) 00 00 00 00 (ID) 06 (Read All Data) 03 (PC/App) 00 (Req) 00 00 00 00 00 00 00 00
+// Checksum: sum of bytes 0 to 17 = 0x0129 (calculated dynamically below)
 const CMD_JK02_POLL = new Uint8Array([
-    0x4E, 0x57, 0x00, 0x13, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00
-]);
-
-// Modbus RTU request frame captured from btsnoop log
-const CMD_MODBUS_POLL = new Uint8Array([
-    0x12, 0x01, 0x00, 0x03, 0x20, 0x00, 0x11, 0x11, 0x01, 0x80,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A
+    0x4E, 0x57, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00,
+    0x06, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x01, 0x29
 ]);
 
 function sendJk02Poll() {
     if (!bleTxChar) return;
-    // Berdasarkan btsnoop log, device '51210CN3E000576' menggunakan Modbus RTU payload!
-    // Kita kirim Modbus poll trigger agar device merespons.
-    console.log('[BMS Poll] Sending Modbus poll trigger to JKBMS...');
-    writeCharacteristic(bleTxChar, CMD_MODBUS_POLL)
-        .catch(err => console.error('[Modbus] Poll error:', err));
+    console.log('[BMS Poll] Sending standard JK02 status poll to JKBMS...');
+    writeCharacteristic(bleTxChar, CMD_JK02_POLL)
+        .catch(err => console.error('[JK02] Poll error:', err));
 }
+
 
 function sendBmsQuery() {
     sendJk02Poll();
@@ -1243,16 +1237,16 @@ function parseModbusBmsData(data, offset) {
 
 // ── TLV DECODER ──────────────────────────────────────────────────────
 // Tag definitions per JK BMS protocol documentation:
-//   0x79: Cell voltages  → len(1B), then len/2 cells × 2B BE in mV
-//   0x80: MOS temp       → 2B BE, 0.1°C
+//   0x79: Cell voltages  → len(1B), then len/3 cells × 3B (1B CellNo, 2B BE Voltage in mV)
+//   0x80: Power/MOS temp → 2B BE, 0.1°C
 //   0x81: Battery T1     → 2B BE, 0.1°C
 //   0x82: Battery T2     → 2B BE, 0.1°C
-//   0x83: Total voltage  → 4B BE, mV  (divide by 1000 = V)
-//   0x84: Current        → 4B BE, MSB=1 → discharging; value & 0x7FFF_FFFF in mA
+//   0x83: Total voltage  → 2B BE, 0.01V
+//   0x84: Current        → 2B BE, Signed (0.01A), if MSB=1 => Discharging
 //   0x85: SOC            → 1B, raw %
-//   0x86: Remain cap     → 4B BE, mAh (divide by 1000 = Ah)
-//   0x87: Nominal cap    → 4B BE, mAh
-//   0x89: Cycle count    → 4B BE
+//   0x86: MOS status     → 1B
+//   0x8B: Cycle count    → 2B BE
+//   0x87: Time Info      → 2B BE
 function parseTlvData(data, start, end) {
     const t = localBmsState.telemetry;
     const s = localBmsState.settings;
@@ -1266,17 +1260,19 @@ function parseTlvData(data, start, end) {
         switch (tag) {
             case 0x79: { // ── Cell voltages
                 const len = data[off]; off++;
-                const numCells = Math.floor(len / 2);
+                const numCells = Math.floor(len / 3);
                 const cells = [];
-                for (let i = 0; i < numCells && off + 1 < end; i++) {
-                    const mv = (data[off] << 8) | data[off+1]; off += 2;
-                    cells.push({ index: i+1, voltage: +(mv/1000).toFixed(3), balancing: false });
+                for (let i = 0; i < numCells && off + 2 < end; i++) {
+                    const cellNo = data[off];
+                    const mv = (data[off+1] << 8) | data[off+2];
+                    off += 3;
+                    cells.push({ index: cellNo, voltage: +(mv/1000).toFixed(3), balancing: false });
                 }
                 if (cells.length > 0) {
                     t.cells = cells;
                     s.cellCount = cells.length;
                     updated = true;
-                    console.log(`[TLV 0x79] ${cells.length} cells, first=${cells[0].voltage}V, last=${cells[cells.length-1].voltage}V`);
+                    console.log(`[TLV 0x79] ${cells.length} cells parsed.`);
                 }
                 break;
             }
@@ -1298,21 +1294,20 @@ function parseTlvData(data, start, end) {
                 updated = true;
                 break;
             }
-            case 0x83: { // ── Total voltage (4B BE, mV)
-                const raw = ((data[off]<<24)|(data[off+1]<<16)|(data[off+2]<<8)|data[off+3])>>>0;
-                off += 4;
-                t.totalVoltage = +(raw / 1000).toFixed(3);
+            case 0x83: { // ── Total voltage (2B BE, 0.01V)
+                const raw = (data[off] << 8) | data[off+1]; off += 2;
+                t.totalVoltage = +(raw * 0.01).toFixed(2);
                 updated = true;
                 console.log(`[TLV 0x83] totalVoltage=${t.totalVoltage}V`);
                 break;
             }
-            case 0x84: { // ── Current (4B BE, MSB=direction, rest=mA)
-                const raw = ((data[off]<<24)|(data[off+1]<<16)|(data[off+2]<<8)|data[off+3])>>>0;
-                off += 4;
-                const mA  = raw & 0x7FFFFFFF;
-                const dir = (raw & 0x80000000) ? -1 : 1; // MSB=1 → discharge (negative)
-                t.current = +(dir * mA / 1000).toFixed(3);
-                t.power   = +(t.totalVoltage * t.current).toFixed(1);
+            case 0x84: { // ── Current (2B BE, Signed 0.01A, MSB=1 => Discharging)
+                const raw = (data[off] << 8) | data[off+1]; off += 2;
+                const isNegative = (raw & 0x8000) !== 0;
+                const val = raw & 0x7FFF;
+                t.current = isNegative ? -(val * 0.01) : (val * 0.01);
+                t.current = +t.current.toFixed(2);
+                t.power = +(t.totalVoltage * t.current).toFixed(1);
                 updated = true;
                 console.log(`[TLV 0x84] current=${t.current}A`);
                 break;
@@ -1323,26 +1318,26 @@ function parseTlvData(data, start, end) {
                 console.log(`[TLV 0x85] SOC=${t.soc}%`);
                 break;
             }
-            case 0x86: { // Remaining capacity (4B BE, mAh)
-                const raw = ((data[off]<<24)|(data[off+1]<<16)|(data[off+2]<<8)|data[off+3])>>>0;
-                off += 4;
-                t.remainingCapacity = +(raw / 1000).toFixed(1);
+            case 0x86: { // MOSFET status (1B)
+                const status = data[off]; off++;
+                t.switches.charge = (status & 0x01) !== 0;
+                t.switches.discharge = (status & 0x02) !== 0;
+                t.switches.balance = (status & 0x04) !== 0;
                 updated = true;
                 break;
             }
-            case 0x87: { // Nominal capacity (4B BE, mAh)
-                const raw = ((data[off]<<24)|(data[off+1]<<16)|(data[off+2]<<8)|data[off+3])>>>0;
-                off += 4;
-                s.nominalCapacity = +(raw / 1000).toFixed(1);
+            case 0x8B: { // Cycle count (2B BE)
+                const raw = (data[off] << 8) | data[off+1]; off += 2;
+                t.cycleCount = raw;
                 updated = true;
                 break;
             }
-            case 0x89: { // Cycle count (4B BE)
-                off += 4;
+            case 0x87: { // Time Info (2B BE)
+                off += 2;
                 break;
             }
             default: {
-                // Unknown tag: try skipping 2 bytes (most common TLV value size)
+                // Skip unknown tag: advance 2 bytes by default
                 off += 2;
                 break;
             }
