@@ -511,11 +511,13 @@ function connectWebBle() {
     updateUI(localBmsState);
 
     navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
+        // Only show devices that advertise the JK BMS service (0xFFE0).
+        // This prevents accidentally picking unrelated Bluetooth devices.
+        filters: [
+            { services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }
+        ],
         optionalServices: [
-            '0000ffe0-0000-1000-8000-00805f9b34fb', // Standard Service
-            '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic NUS
-            '0000ffe5-0000-1000-8000-00805f9b34fb'  // Alt JK Service
+            '0000ffe0-0000-1000-8000-00805f9b34fb'
         ]
     })
     .then(device => {
@@ -529,43 +531,16 @@ function connectWebBle() {
     .then(server => {
         bleServer = server;
         console.log("GATT Connected. Resolving service...");
-        
-        return server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb')
-            .catch(() => {
-                console.log("Service ffe0 not found, trying Nordic NUS...");
-                return server.getPrimaryService('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
-            })
-            .catch(() => {
-                console.log("Nordic NUS not found, trying Alt JK ffe5...");
-                return server.getPrimaryService('0000ffe5-0000-1000-8000-00805f9b34fb');
-            });
+        return server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
     })
     .then(service => {
         bleService = service;
-        console.log("Service resolved. Finding characteristics...");
-
-        if (service.uuid === '0000ffe0-0000-1000-8000-00805f9b34fb') {
-            return service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb')
-                .then(char => {
-                    bleRxChar = char;
-                    bleTxChar = char;
-                });
-        } else if (service.uuid === '6e400001-b5a3-f393-e0a9-e50e24dcca9e') {
-            return service.getCharacteristic('6e400003-b5a3-f393-e0a9-e50e24dcca9e')
-                .then(rxChar => {
-                    bleRxChar = rxChar;
-                    return service.getCharacteristic('6e400002-b5a3-f393-e0a9-e50e24dcca9e');
-                })
-                .then(txChar => {
-                    bleTxChar = txChar;
-                });
-        } else {
-            return service.getCharacteristic('0000ffe9-0000-1000-8000-00805f9b34fb')
-                .then(char => {
-                    bleRxChar = char;
-                    bleTxChar = char;
-                });
-        }
+        console.log("Service FFE0 resolved. Getting characteristic FFE1...");
+        return service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb')
+            .then(char => {
+                bleRxChar = char;
+                bleTxChar = char; // same characteristic for TX and RX (UART bridge)
+            });
     })
     .then(() => {
         console.log("Enabling data notification...");
