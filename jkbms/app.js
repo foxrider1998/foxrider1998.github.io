@@ -511,10 +511,18 @@ function connectWebBle() {
     updateUI(localBmsState);
 
     navigator.bluetooth.requestDevice({
-        // Tampilkan semua device agar EZ BT Power_C54FE8945B62 bisa dipilih
         acceptAllDevices: true,
+        // Dendaftarkan UUID standar dan custom modbus/cypress service agar tidak diblokir browser
         optionalServices: [
-            '0000ffe0-0000-1000-8000-00805f9b34fb'
+            '0000ffe0-0000-1000-8000-00805f9b34fb', // JKBMS FFE0
+            '0000fff0-0000-1000-8000-00805f9b34fb', // JKBMS FFF0
+            '0000ffe5-0000-1000-8000-00805f9b34fb', // JKBMS FFE5
+            '00000001-0000-1000-8000-00805f9b34fb', // Cypress / Industrial custom service 1
+            '00000006-0000-1000-8000-00805f9b34fb', // Cypress / Industrial custom service 6
+            '000000ff-0000-1000-8000-00805f9b34fb', // Industrial custom service FF
+            '00001800-0000-1000-8000-00805f9b34fb', // Generic Access
+            '00001801-0000-1000-8000-00805f9b34fb', // Generic Attribute
+            '0000180a-0000-1000-8000-00805f9b34fb'  // Device Information
         ]
     })
     .then(device => {
@@ -525,19 +533,41 @@ function connectWebBle() {
         device.addEventListener('gattserverdisconnected', onBleDisconnected);
         return device.gatt.connect();
     })
-    .then(server => {
+    .then(async server => {
         bleServer = server;
-        console.log("GATT Connected. Resolving service...");
-        return server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
-    })
-    .then(service => {
-        bleService = service;
-        console.log("Service FFE0 resolved. Getting characteristic FFE1...");
-        return service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb')
-            .then(char => {
-                bleRxChar = char;
-                bleTxChar = char; // same characteristic for TX and RX (UART bridge)
-            });
+        console.log("GATT Connected. Scanning all primary services dynamically...");
+        const services = await server.getPrimaryServices();
+        let foundChar = null;
+
+        for (const service of services) {
+            console.log(`[BLE Scan] Service: ${service.uuid}`);
+            try {
+                const chars = await service.getCharacteristics();
+                for (const char of chars) {
+                    const p = char.properties;
+                    const canWrite = p.write || p.writeWithoutResponse;
+                    const canNotify = p.notify;
+                    console.log(`   ├─ Characteristic: ${char.uuid} | Write: ${canWrite} | Notify: ${canNotify}`);
+                    
+                    if (canNotify && canWrite) {
+                        foundChar = char;
+                        bleService = service;
+                        console.log(`   └── ✅ FOUND communication channel: ${char.uuid}`);
+                        break;
+                    }
+                }
+            } catch (err) {
+                console.warn(`Failed to inspect service ${service.uuid}:`, err);
+            }
+            if (foundChar) break;
+        }
+
+        if (!foundChar) {
+            throw new Error("Jalur komunikasi passthrough (Notify + Write) tidak ditemukan pada device ini.");
+        }
+
+        bleRxChar = foundChar;
+        bleTxChar = foundChar;
     })
     .then(() => {
         console.log("Enabling data notification...");
