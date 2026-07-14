@@ -1359,6 +1359,31 @@ writeSettingsBtn.addEventListener('click', () => {
     showToast('Parameter terkirim ke BMS', 'success');
 });
 
+// Auto scale screen to fit parent frame/viewport without clipping
+function autoScaleDashboard() {
+    const bezel = document.querySelector('.outer-bezel');
+    if (!bezel) return;
+    
+    bezel.style.transform = 'none';
+    
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    const bezelWidth = bezel.offsetWidth;
+    const bezelHeight = bezel.offsetHeight;
+    
+    // Add 10px breathing room on all sides
+    const scaleX = (viewportWidth - 20) / bezelWidth;
+    const scaleY = (viewportHeight - 20) / bezelHeight;
+    const scale = Math.min(scaleX, scaleY, 1);
+    
+    bezel.style.transform = `scale(${scale})`;
+    bezel.style.transformOrigin = 'center center';
+}
+
+window.addEventListener('resize', autoScaleDashboard);
+window.addEventListener('load', autoScaleDashboard);
+
 // Start client handlers
 updateUI(localBmsState);
 connectWebSocket();
@@ -1367,3 +1392,4 @@ if (localBmsState.mode === 'webble') {
 } else {
     startLocalSimulator();
 }
+autoScaleDashboard();
