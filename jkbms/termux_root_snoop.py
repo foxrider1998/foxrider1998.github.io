@@ -42,10 +42,11 @@ def parse_warning_flags(flags):
     return warnings
 
 def decode_legacy_55aa_payload(data):
-    # Struktur JKBMS Legacy 55 AA berdasarkan analisis dump btsnoop:
-    # 55 AA (Header) -> disusul status bytes
-    # Voltase Sel 1-16: berturut-turut bertipe 2-byte BE (mV) dimulai dari offset 10:
-    # Sel 1: data[10..11], Sel 2: data[12..13], Sel 3: data[14..15] dst.
+    # Struktur JKBMS Legacy 55 AA berdasarkan analisis dump btsnoop Samsung S20+ live:
+    # 55 AA EB 90 (Header) -> disusul status bytes
+    # Voltase Sel 1-16: berturut-turut bertipe 2-byte BE (mV) dimulai dari offset 8:
+    # Sel 1: data[8..9], Sel 2: data[10..11], Sel 3: data[12..13] dst.
+    # Contoh raw hex: "0c 4d 0c a7 0c 20 0c a4" -> 3149 mV, 3239 mV, 3104 mV, 3236 mV (SANGAT COCOK DENGAN DASHBOARD!)
     t = {
         "cells": [],
         "temperatures": {},
@@ -55,7 +56,7 @@ def decode_legacy_55aa_payload(data):
     try:
         # Loop baca tegangan sel (16 sel max)
         for i in range(16):
-            off = 10 + (i * 2)
+            off = 8 + (i * 2)
             if off + 1 < len(data):
                 mv = (data[off] << 8) | data[off+1]
                 if mv > 2000 and mv < 4500:
@@ -65,24 +66,26 @@ def decode_legacy_55aa_payload(data):
                         "balancing": False
                     })
         
-        # MOSFET & Sensor Temperature: Terletak di offset 78-79
-        if 79 < len(data):
-            raw_temp = read_int16_be(data, 78)
+        # MOSFET & Sensor Temperature: Terletak di offset 76-77
+        # Contoh raw hex: "0c d9" -> 3289 -> 32.8 °C
+        if 77 < len(data):
+            raw_temp = read_int16_be(data, 76)
             t["temperatures"]["mosfet"] = raw_temp * 0.1
             t["temperatures"]["temp1"] = raw_temp * 0.1
             t["temperatures"]["temp2"] = raw_temp * 0.1
             
-        # Total Voltage (0.01V): Terletak di offset 44-45
-        if 45 < len(data):
-            t["totalVoltage"] = read_uint16_be(data, 44) * 0.01
-            
-        # Current (0.01A): Terletak di offset 48-49
+        # Total Voltage (0.01V): Terletak di offset 48-49
         if 49 < len(data):
-            t["current"] = read_int16_be(data, 48) * 0.01
+            t["totalVoltage"] = read_uint16_be(data, 48) * 0.01
             
-        # SOC: Terletak di offset 92-93
-        if 92 < len(data):
-            t["soc"] = data[92]
+        # Current (0.01A): Terletak di offset 52-53 (Signed)
+        if 53 < len(data):
+            t["current"] = read_int16_be(data, 52) * 0.01
+            
+        # SOC: Terletak di offset 86
+        # Contoh raw hex: "5e" -> 94%
+        if 86 < len(data):
+            t["soc"] = data[86]
         else:
             t["soc"] = 100 # default
             
@@ -90,6 +93,7 @@ def decode_legacy_55aa_payload(data):
         return t
     except Exception as e:
         return None
+
 
 
 def decode_jk_bms_payload(data):
