@@ -22,7 +22,7 @@ let broadcastTimer = null;
 
 // Local State (for Web Bluetooth or local simulation)
 let localBmsState = {
-  mode: 'webble', // 'webble' (Browser Web Bluetooth), 'remote' (Cloud Remote View), or 'simulated'
+  mode: 'remote', // Default to Cloud Remote View
   connectionStatus: 'disconnected',
   connectedDevice: null,
   telemetry: {
@@ -1157,7 +1157,7 @@ function startRemotePolling() {
     }
 
     pollRemoteTelemetry(); // Poll immediately
-    remotePollTimer = setInterval(pollRemoteTelemetry, 3000);
+    remotePollTimer = setInterval(pollRemoteTelemetry, 10000);
 }
 
 function stopRemotePolling() {
