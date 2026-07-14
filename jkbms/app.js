@@ -582,24 +582,18 @@ function connectWebBle() {
             address: bleDevice.id
         };
         
-        showToast("Terhubung ke BMS! Mengirim auth...", "success");
+        // ── JK02 Protocol: BMS streams data automatically after notification is enabled ──
+        // DO NOT send any AA 55 90 EB polling commands!
+        // Sending JK04 commands jams the BMS UART → causes endless AT\r\n heartbeats.
+        // Just listen — BMS will push 4E 57 00 13 TLV frames every ~1 second.
+        showToast("Terhubung! Mendengarkan data BMS...", "success");
         debugPacketCount = 0;
         atHeartbeatCount = 0;
-        bmsProtocol = 'jk04';
         bleDataReady = false;
         jk04RxBuffer = new Uint8Array(0);
+        jk02RxBuffer = new Uint8Array(0);
 
-        // Step 1: Send auth with correct password '1234'
-        setTimeout(() => sendBmsAuth('1234'), 300);
-        
-        // Step 2: After 1s, fetch settings (0x96) once to get cell count & capacity
-        setTimeout(() => sendJk04Query(0x96), 1000);
-        
-        // Step 3: After 1.5s, start telemetry polling (0x97) every 1 second
-        setTimeout(() => {
-            bleQueryTimer = setInterval(sendBmsQuery, 1000);
-            sendBmsQuery(); // immediate first poll
-        }, 1500);
+        console.log("[JK02] Listening for auto-stream data (4E 57 00 13)...");
         
         // Automatically start Cloud Broadcast when Bluetooth connects!
         switchBroadcast.checked = true;
@@ -627,51 +621,23 @@ function onBleNotificationReceived(event) {
 
     debugPacketCount++;
     if (debugPacketCount <= 15) {
-        showToast(`RX #${debugPacketCount}: ${chunk.length}B [${hex.slice(0,30)}...]`, "success");
+        showToast(`RX #${debugPacketCount}: ${chunk.length}B [${hex.slice(0,24)}...]`, "info");
     }
 
-    // Ignore AT keepalive heartbeat (41 54 0D 0A = 'AT\r\n')
-    if (chunk[0] === 0x41 && chunk[1] === 0x54 && chunk[2] === 0x0D && chunk[3] === 0x0A
-        && (chunk.length === 4 || chunk.every((b,i) => i % 4 < 4 && [0x41,0x54,0x0D,0x0A][i%4] === b))) {
-        if (atHeartbeatCount === 0) console.log('[Heartbeat] AT keepalive. JK04 protocol active.');
+    // ── Filter: ignore AT\r\n heartbeat (41 54 0D 0A) from BLE chip ──
+    // This is the BLE-UART module's idle broadcast, not BMS data.
+    const isAtHeartbeat = Array.from(chunk).every((b, i) => b === [0x41,0x54,0x0D,0x0A][i % 4]);
+    if (isAtHeartbeat) {
+        if (atHeartbeatCount === 0) console.log('[BLE] AT heartbeat from BLE chip — BMS streaming not started yet.');
         atHeartbeatCount++;
         return;
     }
 
-    // Auth challenge: AA 55 90 EB (4 bytes) → BMS asking for password
-    if (chunk.length === 4 &&
-        chunk[0] === 0xAA && chunk[1] === 0x55 &&
-        chunk[2] === 0x90 && chunk[3] === 0xEB) {
-        console.log("[BLE Auth] BMS requested auth, resending password '1234'...");
-        sendBmsAuth('1234');
-        return;
-    }
-
-    // JK04 response: starts with 55 AA EB 90 (reversed response header)
-    if (chunk[0] === 0x55 && chunk[1] === 0xAA &&
-        chunk[2] === 0xEB && chunk[3] === 0x90) {
-        // New response packet — reset accumulator and start fresh
-        jk04RxBuffer = new Uint8Array(chunk.length);
-        jk04RxBuffer.set(chunk);
-        console.log(`[JK04 RX] New response started, type=0x${chunk[4].toString(16)}, got ${chunk.length} bytes`);
-        processJk04Buffer();
-        return;
-    }
-
-    // Continuation chunk for ongoing JK04 response
-    if (jk04RxBuffer.length > 0) {
-        const merged = new Uint8Array(jk04RxBuffer.length + chunk.length);
-        merged.set(jk04RxBuffer);
-        merged.set(chunk, jk04RxBuffer.length);
-        jk04RxBuffer = merged;
-        console.log(`[JK04 RX] Accumulated ${jk04RxBuffer.length} bytes total`);
-        processJk04Buffer();
-        return;
-    }
-
-    // Fallback: try JK02 4E 57 style parser
+    // ── All other data → JK02 TLV accumulator ──
+    // BMS auto-streams 4E 57 00 13 TLV frames every ~1s after notifications enabled.
     handleIncomingBleData(chunk);
 }
+
 
 // Process accumulated JK04 response buffer when we think we have a full frame
 function processJk04Buffer() {
