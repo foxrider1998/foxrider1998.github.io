@@ -582,19 +582,22 @@ function connectWebBle() {
             address: bleDevice.id
         };
         
-        // ── JK02 Protocol: BMS streams data automatically after notification is enabled ──
-        // DO NOT send any AA 55 90 EB polling commands!
-        // Sending JK04 commands jams the BMS UART → causes endless AT\r\n heartbeats.
-        // Just listen — BMS will push 4E 57 00 13 TLV frames every ~1 second.
-        showToast("Terhubung! Mendengarkan data BMS...", "success");
+        // ── JK02 Protocol: send poll request + listen for auto-stream ──
+        // Some firmware streams automatically; others need a periodic "trigger".
+        // This 4E 57 request covers both cases.
+        showToast("Terhubung! Memulai polling JK02...", "success");
         debugPacketCount = 0;
         atHeartbeatCount = 0;
         bleDataReady = false;
         jk04RxBuffer = new Uint8Array(0);
         jk02RxBuffer = new Uint8Array(0);
 
-        console.log("[JK02] Listening for auto-stream data (4E 57 00 13)...");
-        
+        // Start JK02 poll every 2 seconds
+        setTimeout(() => {
+            sendJk02Poll(); // immediate first trigger
+            bleQueryTimer = setInterval(sendJk02Poll, 2000);
+        }, 500);
+
         // Automatically start Cloud Broadcast when Bluetooth connects!
         switchBroadcast.checked = true;
         initRemoteBinAndStartBroadcast();
@@ -852,37 +855,27 @@ let atHeartbeatCount = 0;
 let jk04RxBuffer = new Uint8Array(0); // accumulate multi-chunk JK04 responses
 let jk04ExpectedLen = 0;
 
-function sendBmsQuery() {
+// ── JK02 Telemetry Poll ─────────────────────────────────────────────
+// Request frame for JK02/NW protocol — 20 bytes, fits in one MTU.
+// Triggers BMS to respond with a 4E 57 00 13 TLV data frame.
+const CMD_JK02_POLL = new Uint8Array([
+    0x4E, 0x57, 0x00, 0x13, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+]);
+
+function sendJk02Poll() {
     if (!bleTxChar) return;
-    // JK04 0x97 = telemetry command (cell voltages, current, SOC, temperature)
-    sendJk04Query(0x97);
+    console.log('[JK02] Sending poll: 4E 57 00 13 ...');
+    writeCharacteristic(bleTxChar, CMD_JK02_POLL)
+        .catch(err => console.error('[JK02] Poll error:', err));
 }
 
-// AT command mode (text protocol)
-function sendAtCommand(cmd) {
-    const text = cmd + '\r\n';
-    const encoded = new TextEncoder().encode(text);
-    console.log(`[AT CMD] Sending: ${text.trim()}`);
-    writeCharacteristic(bleTxChar, encoded)
-        .catch(err => console.error('[AT CMD] Error:', err));
+// sendBmsQuery is now an alias for JK02 poll
+function sendBmsQuery() {
+    sendJk02Poll();
 }
 
-// Send JK04 command: AA 55 90 EB [cmd] 00 03 00...00 [cksum]
-// Checksum = (AA+55+90+EB+cmd) & 0xFF  (verified from protocol docs)
-function sendJk04Query(cmd = 0x97) {
-    const frame = new Uint8Array(21);
-    frame[0] = 0xAA; frame[1] = 0x55; frame[2] = 0x90; frame[3] = 0xEB;
-    frame[4] = cmd;       // 0x97 = telemetry, 0x96 = settings
-    frame[5] = 0x00;
-    frame[6] = 0x03;      // source = BLE
-    // bytes 7-19 = 0x00 (padding)
-    const cksum = (0xAA + 0x55 + 0x90 + 0xEB + cmd) & 0xFF;
-    frame[20] = cksum;
-    const label = cmd === 0x97 ? 'telemetry(0x97)' : 'settings(0x96)';
-    console.log(`[JK04] Sending ${label}:`, Array.from(frame).map(b => b.toString(16).padStart(2,'0')).join(' '));
-    writeCharacteristic(bleTxChar, frame)
-        .catch(err => console.error('[JK04] Error:', err));
-}
 
 // JK02 binary protocol query (4E 57 header)
 function sendJk02Query() {
