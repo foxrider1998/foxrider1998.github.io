@@ -594,10 +594,16 @@ function onBleNotificationReceived(event) {
     let value = event.target.value;
     let chunk = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     
+    // Print every received BLE chunk to console for debugging
+    const hex = Array.from(chunk).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    const ascii = Array.from(chunk).map(b => (b >= 32 && b < 127) ? String.fromCharCode(b) : '.').join('');
+    console.log(`[BLE RX] #${debugPacketCount + 1} | ${chunk.length} bytes`);
+    console.log(`  HEX:   ${hex}`);
+    console.log(`  ASCII: ${ascii}`);
+
     debugPacketCount++;
     if (debugPacketCount <= 15) {
-        const hex = Array.from(chunk).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-        showToast(`Menerima: ${chunk.length} bytes [${hex}]`, "success");
+        showToast(`RX #${debugPacketCount}: ${chunk.length}B [${hex}]`, "success");
     }
 
     // Detect JKBMS auth challenge: AA 55 90 EB = BMS asking for password
