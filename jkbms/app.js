@@ -611,8 +611,15 @@ function connectWebBle() {
 function onBleNotificationReceived(event) {
     let value = event.target.value;
     let chunk = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-    
-    // Print every received BLE chunk to console for debugging
+
+    // ── Silent filter: drop AT\r\n heartbeat before any logging ──
+    const isAtHeartbeat = Array.from(chunk).every((b, i) => b === [0x41,0x54,0x0D,0x0A][i % 4]);
+    if (isAtHeartbeat) {
+        atHeartbeatCount++;
+        return; // no console output
+    }
+
+    // Log only real BMS data
     const hex = Array.from(chunk).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
     const ascii = Array.from(chunk).map(b => (b >= 32 && b < 127) ? String.fromCharCode(b) : '.').join('');
     console.log(`[BLE RX] #${debugPacketCount + 1} | ${chunk.length} bytes`);
@@ -624,17 +631,7 @@ function onBleNotificationReceived(event) {
         showToast(`RX #${debugPacketCount}: ${chunk.length}B [${hex.slice(0,24)}...]`, "info");
     }
 
-    // ── Filter: ignore AT\r\n heartbeat (41 54 0D 0A) from BLE chip ──
-    // This is the BLE-UART module's idle broadcast, not BMS data.
-    const isAtHeartbeat = Array.from(chunk).every((b, i) => b === [0x41,0x54,0x0D,0x0A][i % 4]);
-    if (isAtHeartbeat) {
-        if (atHeartbeatCount === 0) console.log('[BLE] AT heartbeat from BLE chip — BMS streaming not started yet.');
-        atHeartbeatCount++;
-        return;
-    }
-
     // ── All other data → JK02 TLV accumulator ──
-    // BMS auto-streams 4E 57 00 13 TLV frames every ~1s after notifications enabled.
     handleIncomingBleData(chunk);
 }
 
