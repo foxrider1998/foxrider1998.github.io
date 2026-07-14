@@ -506,7 +506,8 @@ function connectWebBle() {
         return;
     }
 
-    console.log("Starting Web Bl    // Implementasi Two-Stage Handshake (Wake Up + Stream)
+    console.log("Starting Web Bluetooth...");
+    // Implementasi Two-Stage Handshake (Wake Up + Stream)
     // Tahap 1: Hubungkan ke Gerbang Pemicu (51210CN...) untuk membangunkan MCU, kirim Modbus poll, lalu putus.
     // Tahap 2: Hubungkan ke Pipa Data (EZ BT Power...) untuk mendengarkan stream data telemetry asli.
     
