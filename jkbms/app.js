@@ -1365,6 +1365,8 @@ updateUI(localBmsState);
 connectWebSocket();
 if (localBmsState.mode === 'webble') {
     // BLE Mode initial wait
+} else if (localBmsState.mode === 'remote') {
+    startRemotePolling();
 } else {
     startLocalSimulator();
 }
