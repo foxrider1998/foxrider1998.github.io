@@ -502,8 +502,40 @@ let debugPacketCount = 0;
 let handshakeStage = 'idle'; // 'idle', 'waking_up', 'ready_to_stream'
 
 // ── TAHAP 1: MEMBANGUNKAN BMS (GATEKEEPER) ──
-function triggerHandshakeStep1() {
+// ── TAHAP 1: MEMBANGUNKAN BMS (GATEKEEPER) ──
+async function triggerHandshakeStep1() {
     console.log("[Handshake] Tahap 1: Membangunkan MCU via Gerbang 51210...");
+    
+    // Cek apakah device sudah pernah dipairing sebelumnya agar bisa autoconnect
+    try {
+        const pairedDevices = await navigator.bluetooth.getDevices();
+        const gatekeeper = pairedDevices.find(d => d.name && d.name.includes("51210"));
+        const dataStream = pairedDevices.find(d => d.name && d.name.includes("EZ BT"));
+
+        if (gatekeeper && dataStream) {
+            console.log("[Handshake] Menemukan perangkat terpasang di memori. Memulai autoconnect...");
+            showToast("Menyambungkan otomatis via memori browser...", "info");
+            
+            // Langkah 1: Konek & Wakeup JKBMS di background
+            console.log("[Handshake Auto] Menyambung ke gatekeeper:", gatekeeper.name);
+            const server1 = await gatekeeper.gatt.connect();
+            const service1 = await server1.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+            const char1 = await service1.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+            await writeCharacteristic(char1, CMD_MODBUS_POLL);
+            
+            await new Promise(r => setTimeout(r, 1000));
+            gatekeeper.gatt.disconnect();
+            console.log("[Handshake Auto] Gatekeeper diputus. Menyambung ke pipa data...");
+
+            // Langkah 2: Langsung sambungkan ke pipa data EZ BT
+            connectToEzBtDeviceDirect(dataStream);
+            return;
+        }
+    } catch (e) {
+        console.warn("navigator.bluetooth.getDevices tidak disupport atau kosong:", e);
+    }
+
+    // Fallback: Minta pairing awal
     showToast("1. Pilih perangkat JKBMS (51210CN...) untuk membangunkan...", "info");
     bleConnectionStatus = 'connecting';
     updateUI(localBmsState);
@@ -542,6 +574,65 @@ function triggerHandshakeStep1() {
         updateUI(localBmsState);
     });
 }
+
+// Fungsi pembantu untuk mengkoneksikan dan menyedot data langsung dari objek BluetoothDevice yang terekam
+function connectToEzBtDeviceDirect(device) {
+    bleDevice = device;
+    bleConnectionStatus = 'connecting';
+    updateUI(localBmsState);
+    showToast(`Menghubungkan ke ${device.name}...`, "info");
+
+    device.gatt.connect()
+    .then(async server => {
+        bleServer = server;
+        console.log("GATT Terkoneksi. Memindai karakteristik secara dinamis...");
+        const services = await server.getPrimaryServices();
+        let foundChar = null;
+
+        for (const service of services) {
+            console.log(`[BLE Scan] Service: ${service.uuid}`);
+            try {
+                const chars = await service.getCharacteristics();
+                for (const char of chars) {
+                    const p = char.properties;
+                    const canWrite = p.write || p.writeWithoutResponse;
+                    const canNotify = p.notify;
+                    if (canNotify && canWrite) {
+                        foundChar = char;
+                        bleService = service;
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.warn(e);
+            }
+            if (foundChar) break;
+        }
+
+        if (!foundChar) throw new Error("Karakteristik passthrough tidak ditemukan.");
+        bleRxChar = foundChar;
+        bleTxChar = foundChar;
+    })
+    .then(() => {
+        return bleRxChar.startNotifications();
+    })
+    .then(async () => {
+        bleRxChar.addEventListener('characteristicvaluechanged', onBleNotificationReceived);
+        bleConnectionStatus = 'connected';
+        localBmsState.connectionStatus = 'connected';
+        localBmsState.connectedDevice = { name: bleDevice.name, address: bleDevice.id };
+        await writeCharacteristic(bleTxChar, CMD_MODBUS_POLL);
+        showToast("Auto-Connect Sukses! Data telemetry mengalir.", "success");
+        bleQueryTimer = setInterval(sendJk02Poll, 2000);
+        updateUI(localBmsState);
+    })
+    .catch(err => {
+        console.error("Auto-connect gagal:", err);
+        showToast("Auto-connect gagal: " + err.message, "error");
+        disconnectWebBle();
+    });
+}
+
 
 // ── TAHAP 2: MENYEDOT DATA TELEMETRY (EZ BT POWER) ──
 function triggerHandshakeStep2() {
