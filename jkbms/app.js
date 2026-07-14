@@ -740,7 +740,7 @@ function triggerHandshakeStep2() {
 
 // Dummy connectWebBle for compatibility
 function connectWebBle() {
-    triggerHandshakeStep2();
+    triggerHandshakeStep1();
 }
 
 
