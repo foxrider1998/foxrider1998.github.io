@@ -5,14 +5,27 @@ import sys
 import subprocess
 import urllib.request
 import json
+import ssl
 
-# ANSI escape codes for coloring
+# ANSI escape codes for terminal coloring
 GREEN = "\033[92m"
 RED = "\033[91m"
 BLUE = "\033[94m"
 YELLOW = "\033[93m"
+CYAN = "\033[96m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
+
+# Global State: Menampung dan menggabungkan data dari frame yang berbeda
+bms_state = {
+    "cells": [],
+    "totalVoltage": 0.0,
+    "current": 0.0,
+    "soc": 0,
+    "temperatures": {"mosfet": 0.0, "temp1": 0.0, "temp2": 0.0},
+    "switches": {"charge": True, "discharge": True, "balance": True},
+    "last_updated": 0
+}
 
 def read_uint16_be(data, offset):
     return (data[offset] << 8) | data[offset + 1]
@@ -26,204 +39,164 @@ def read_uint32_be(data, offset):
 
 def decode_legacy_55aa_payload(data):
     """
-    Parser untuk protokol JK04 Legacy (Header wajib: 55 AA EB 90)
+    Parser pintar untuk protokol JK04 (55 AA EB 90).
+    Mendeteksi jenis frame (Cmd ID di byte ke-4) agar tidak salah kamar.
     """
-    t = {
-        "cells": [],
-        "temperatures": {},
-        "switches": {"charge": True, "discharge": True, "balance": True}
-    }
+    global bms_state
     
-    try:
-        # Baca tegangan sel (Maksimal 16 sel, offset mulai dari byte 8)
-        for i in range(16):
+    if len(data) < 10:
+        return False
+        
+    cmd_id = data[4] # Byte ke-4 menentukan jenis isi paket
+    updated = False
+
+    # FRAME TIPE 1: Khusus Data Sel Baterai (Cell Voltages)
+    if cmd_id == 0x01 or (len(data) >= 40 and data[5] <= 24):
+        cells_temp = []
+        # Baca maksimal 12 sel (sesuai spesifikasi LiFePO4 Anda)
+        for i in range(12):
             off = 8 + (i * 2)
             if off + 1 < len(data):
                 mv = read_uint16_be(data, off)
-                # Sanity Check: LiFePO4 / Li-Ion sel normal ada di rentang 2.0V - 4.3V (2000 - 4300 mV)
-                if 2000 <= mv <= 4300:
-                    t["cells"].append({
+                if 2000 <= mv <= 4300: # Sanity check LiFePO4
+                    cells_temp.append({
                         "index": i + 1,
-                        "voltage": mv / 1000.0,
+                        "voltage": round(mv / 1000.0, 3),
                         "balancing": False
                     })
-        
-        # Suhu MOSFET & Sensor (Offset 76-77)
-        if 77 < len(data):
-            raw_temp = read_int16_be(data, 76)
-            temp_c = raw_temp * 0.1
-            # Sanity Check Suhu: Abaikan jika gila (misal -947 C)
-            if -40 <= temp_c <= 100:
-                t["temperatures"]["mosfet"] = temp_c
-                t["temperatures"]["temp1"] = temp_c
-                t["temperatures"]["temp2"] = temp_c
-            
-        # Total Voltage 0.01V (Offset 48-49)
+        if len(cells_temp) >= 4: # Minimal ada 4 sel terbaca valid
+            bms_state["cells"] = cells_temp
+            updated = True
+
+    # FRAME TIPE 2: Khusus Status Umum (Total V, Arus, SOC, Suhu)
+    elif cmd_id == 0x02 or len(data) >= 80:
+        # Cari angka sinkronisasi untuk Total Voltage (sekitar 38V = ~3800 cV)
         if 49 < len(data):
             vtg = read_uint16_be(data, 48) * 0.01
-            if vtg > 10.0: # Baterai Anda 38.4V, abaikan jika baca 0.00V
-                t["totalVoltage"] = vtg
-            
-        # Current 0.01A Signed (Offset 52-53)
+            if 30.0 <= vtg <= 45.0: # Filter ketat tegangan baterai 12S
+                bms_state["totalVoltage"] = round(vtg, 2)
+                updated = True
+                
         if 53 < len(data):
-            t["current"] = read_int16_be(data, 52) * 0.01
-            
-        # SOC % (Offset 86)
+            cur = read_int16_be(data, 52) * 0.01
+            if -150.0 <= cur <= 150.0:
+                bms_state["current"] = round(cur, 2)
+                
         if 86 < len(data):
             soc_val = data[86]
-            # Sanity Check: SOC wajib 0 - 100% (Mencegah muncul angka 172%)
             if 0 <= soc_val <= 100:
-                t["soc"] = soc_val
-            else:
-                return None # Data rusak, buang!
-        else:
-            t["soc"] = 0
-            
-        t["power"] = t.get("totalVoltage", 0.0) * t.get("current", 0.0)
-        
-        # Jika tegangan total atau sel kosong, anggap frame cacat
-        if not t.get("totalVoltage") or len(t["cells"]) == 0:
-            return None
-            
-        return t
-    except Exception:
-        return None
+                bms_state["soc"] = soc_val
+                
+        if 77 < len(data):
+            temp_c = read_int16_be(data, 76) * 0.1
+            if -10.0 <= temp_c <= 85.0:
+                bms_state["temperatures"]["mosfet"] = round(temp_c, 1)
 
-def decode_jk_bms_payload(data):
+    return updated
+
+def upload_to_cloud(key="0d6013fe3fa362ab0388"):
     """
-    Parser untuk protokol JK02 Modern (Header wajib: 4E 57 00 13)
-    Menggunakan arsitektur TLV (Tag-Length-Value)
+    Mengirim data ke npoint.io dengan bypass SSL Android Termux
     """
-    offset = 11  # TLV selalu dimulai setelah byte ke-10
-    length = len(data) - 5  # Potong 5 byte di akhir (checksum & EOF)
-    
-    t = {
-        "cells": [],
-        "temperatures": {},
-        "switches": {"charge": True, "discharge": True, "balance": True}
-    }
-    
-    while offset < length:
-        tag = data[offset]
-        tag_len = data[offset + 1]
-        val_offset = offset + 2
-        
-        if val_offset + tag_len > len(data):
-            break
-            
-        if tag == 0x79:  # Cell Voltages
-            cell_count = tag_len // 3
-            for i in range(cell_count):
-                idx = data[val_offset + (i * 3)]
-                mv = (data[val_offset + (i * 3) + 1] << 8) | data[val_offset + (i * 3) + 2]
-                if 2000 <= mv <= 4300:
-                    t["cells"].append({
-                        "index": idx,
-                        "voltage": mv / 1000.0,
-                        "balancing": False
-                    })
-        elif tag == 0x80:  # Temp MOSFET
-            t["temperatures"]["mosfet"] = read_int16_be(data, val_offset) * 0.1
-        elif tag == 0x81:  # Temp 1
-            t["temperatures"]["temp1"] = read_int16_be(data, val_offset) * 0.1
-        elif tag == 0x82:  # Temp 2
-            t["temperatures"]["temp2"] = read_int16_be(data, val_offset) * 0.1
-        elif tag == 0x83:  # Total Voltage (0.01V)
-            t["totalVoltage"] = read_uint16_be(data, val_offset) * 0.01
-        elif tag == 0x84:  # Current (0.01A Signed)
-            raw_cur = read_uint16_be(data, val_offset)
-            if raw_cur & 0x8000:
-                t["current"] = -((raw_cur & 0x7FFF) * 0.01)
-            else:
-                t["current"] = raw_cur * 0.01
-        elif tag == 0x85:  # SOC %
-            soc_val = data[val_offset]
-            if 0 <= soc_val <= 100:
-                t["soc"] = soc_val
-        elif tag == 0x86:  # Suhu versi alternatif / Status
-            pass
-        elif tag == 0x8B:  # Cycle Count
-            t["cycleCount"] = read_uint16_be(data, val_offset)
-
-        offset += (2 + tag_len)
-
-    if t["cells"]:
-        t["cells"].sort(key=lambda x: x["index"])
-    t["power"] = t.get("totalVoltage", 0.0) * t.get("current", 0.0)
-    
-    # Sanity check akhir: buang jika SOC gila atau tegangan nol
-    if t.get("soc", -1) < 0 or not t.get("totalVoltage"):
-        return None
-        
-    return t
-
-def upload_to_cloud(telemetry, key="0d6013fe3fa362ab0388"):
+    global bms_state
     url = f"https://api.npoint.io/{key}"
+    
+    # Format JSON disesuaikan standar Webview Anda
     payload = {
-        "timestamp": int(time.time()),
-        "mode": "remote",
-        "connectionStatus": "connected",
-        "connectedDevice": {
-            "name": "Termux Root Snoop",
-            "address": "LocalHCI"
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "device_info": {
+            "vendor": "Jikong",
+            "model": "JK-BMS-12S-PLTS",
+            "connection": "Termux BLE Snoop Passthrough"
         },
-        "telemetry": telemetry
+        "realtime_status": {
+            "battery_type": "LiFePO4",
+            "state_of_charge_pct": bms_state["soc"],
+            "is_charging": bms_state["current"] > 0,
+            "is_discharging": bms_state["current"] < 0
+        },
+        "measurements": {
+            "total_voltage_v": bms_state["totalVoltage"],
+            "current_a": bms_state["current"],
+            "power_w": round(bms_state["totalVoltage"] * bms_state["current"], 2),
+            "temperature_mos_c": bms_state["temperatures"]["mosfet"]
+        },
+        "cell_data": {
+            "cell_count": len(bms_state["cells"]),
+            "voltages": bms_state["cells"]
+        }
     }
+    
     try:
+        # Buat SSL Context yang mengabaikan error sertifikat di Android
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        
         req = urllib.request.Request(
             url,
-            data=json.dumps(payload).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
+            data=json.dumps(payload, indent=2).encode('utf-8'),
+            headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Termux/JKBMS'
+            },
             method='POST'
         )
-        with urllib.request.urlopen(req, timeout=3) as res:
-            res.read()
-    except Exception:
-        pass
+        with urllib.request.urlopen(req, timeout=4, context=ctx) as res:
+            if res.status == 200:
+                print(f"{GREEN} └─> [Cloud ✅] Sukses update JSON ke npoint.io!{RESET}")
+            else:
+                print(f"{YELLOW} └─> [Cloud ⚠️] Respon server: HTTP {res.status}{RESET}")
+    except Exception as e:
+        print(f"{RED} └─> [Cloud ❌] Gagal upload: {str(e)[:45]}{RESET}")
 
 last_upload_time = 0
 
-def render_ui(t):
-    global last_upload_time
+def render_ui():
+    global bms_state, last_upload_time
     
-    vtg = t.get('totalVoltage', 0.0)
-    curr = t.get('current', 0.0)
-    soc = t.get('soc', 0)
-    temp = t.get('temperatures', {}).get('mosfet', 0.0)
+    vtg = bms_state["totalVoltage"]
+    curr = bms_state["current"]
+    soc = bms_state["soc"]
+    temp = bms_state["temperatures"]["mosfet"]
+    cells = bms_state["cells"]
     
-    cells = t.get('cells', [])
-    # Format string untuk 8 sel pertama
-    cell_v_str = ", ".join([f"C{c['index']}:{c['voltage']:.3f}V" for c in cells[:8]])
-    if len(cells) > 8:
-        cell_v_str += f" (+{len(cells)-8} sel)"
+    # Hanya tampilkan jika data utama sudah tersinkronisasi
+    if vtg == 0.0:
+        return
 
     timestamp = time.strftime("%H:%M:%S")
-    
-    # Warna indikator arus
     curr_color = GREEN if curr >= 0 else YELLOW
     
-    print(f"[{timestamp}] {BOLD}V={vtg:.2f}V{RESET} | {curr_color}I={curr:+.2f}A{RESET} | {BLUE}SOC={soc}%{RESET} | Temp={temp:.1f}°C | {cell_v_str}")
+    # Format teks sel
+    cell_v_str = ", ".join([f"C{c['index']}:{c['voltage']}V" for c in cells[:6]])
+    if len(cells) > 6:
+        cell_v_str += f" (+{len(cells)-6} sel)"
+
+    print(f"[{timestamp}] {BOLD}V={vtg:.2f}V{RESET} | {curr_color}I={curr:+.2f}A{RESET} | {BLUE}SOC={soc}%{RESET} | Temp={temp}°C")
+    if cells:
+        print(f"           └─> Sel: {CYAN}{cell_v_str}{RESET}")
     
+    # Trigger upload cloud setiap 4 detik
     now = time.time()
-    if now - last_upload_time >= 3.0:
+    if now - last_upload_time >= 4.0:
         last_upload_time = now
-        upload_to_cloud(t)
+        upload_to_cloud()
 
 def main():
-    print(f"{GREEN}{BOLD}=== JKBMS Native PCAP Snoop Parser (Fixed) ==={RESET}")
+    print(f"{GREEN}{BOLD}=== JKBMS Native PCAP Snoop Parser (v2.0 Fixed) ==={RESET}")
     print("Membaca stream /data/log/bt/btsnoop_hci.log dari sistem Android...")
     
     cmd = ["su", "-c", "tail -f -c +0 /data/log/bt/btsnoop_hci.log"]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     
-    # 1. Skip Btsnoop File Header (16 bytes)
     header = proc.stdout.read(16)
     if len(header) < 16 or not header.startswith(b'btsnoop\0'):
         print(f"{RED}[Error] Format file btsnoop tidak valid atau izin Root ditolak.{RESET}")
         proc.terminate()
         sys.exit(1)
         
-    print(f"{GREEN}Header btsnoop terverifikasi. Menunggu paket telemetry BMS...{RESET}\n")
+    print(f"{GREEN}Header terverifikasi. Menunggu sinkronisasi frame BMS...{RESET}\n")
     
     try:
         while True:
@@ -237,48 +210,14 @@ def main():
             if len(payload) < incl_len:
                 continue
                 
-            # ==========================================================
-            # PERBAIKAN KRUSIAL: Cari Header MUTLAK 4-Byte (Bukan 2-Byte)
-            # ==========================================================
-            is_legacy = False
-            header_idx = -1
-            
-            # Cari 4E 57 00 13 (JK02 Modern)
-            idx_4e57 = payload.find(b'\x4e\x57\x00\x13')
-            # Cari 55 AA EB 90 (JK04 Legacy)
+            # Filter ketat Header JKBMS Legacy (55 AA EB 90)
             idx_55aa = payload.find(b'\x55\xaa\xeb\x90')
-            
-            if idx_4e57 != -1:
-                header_idx = idx_4e57
-            elif idx_55aa != -1:
-                header_idx = idx_55aa
-                is_legacy = True
-                
-            # Jika tidak ada header 4-byte yang sah, abaikan paket sampah ini!
-            if header_idx == -1:
-                continue
-                
-            clean_packet = payload[header_idx:]
-            
-            if is_legacy:
-                if len(clean_packet) >= 110:
-                    telemetry = decode_legacy_55aa_payload(clean_packet)
-                    if telemetry:
-                        render_ui(telemetry)
-            else:
-                # PERBAIKAN KRUSIAL: Baca panjang payload dari Bytes [4..5]!
-                if len(clean_packet) >= 11:
-                    payload_len = (clean_packet[4] << 8) | clean_packet[5]
-                    total_expected_len = payload_len + 11
-                    
-                    # Pastikan paket btsnoop sudah menampung frame secara utuh
-                    if len(clean_packet) >= total_expected_len:
-                        frame_data = clean_packet[:total_expected_len]
-                        
-                        # Ekstrak dan parse langsung (tanpa filter checksum yang sering membuang data valid di sadapan PCAP)
-                        telemetry = decode_jk_bms_payload(frame_data)
-                        if telemetry:
-                            render_ui(telemetry)
+            if idx_55aa != -1:
+                clean_packet = payload[idx_55aa:]
+                if len(clean_packet) >= 40:
+                    # Parse dan update global state
+                    if decode_legacy_55aa_payload(clean_packet):
+                        render_ui()
 
     except KeyboardInterrupt:
         print(f"\n{YELLOW}Monitoring dihentikan oleh pengguna.{RESET}")
