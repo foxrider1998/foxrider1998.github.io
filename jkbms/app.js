@@ -494,8 +494,6 @@ async function writeCharacteristic(characteristic, value) {
         }
     }
 }
-
-
 // ====================================================
 // DIRECT BROWSER WEB BLUETOOTH CLIENT
 // ====================================================
@@ -506,77 +504,26 @@ function connectWebBle() {
         return;
     }
 
-    console.log("Starting Web Bluetooth...");
-    // Implementasi Two-Stage Handshake (Wake Up + Stream)
-    // Tahap 1: Hubungkan ke Gerbang Pemicu (51210CN...) untuk membangunkan MCU, kirim Modbus poll, lalu putus.
-    // Tahap 2: Hubungkan ke Pipa Data (EZ BT Power...) untuk mendengarkan stream data telemetry asli.
-    
-    console.log("Starting Two-Stage Web Bluetooth connection...");
-    showToast("Tahap 1: Hubungkan ke gerbang pemicu (51210CN)...", "info");
-
-    // ====================================================
-    // TAHAP 1: KETUK PINTO (WAKE UP)
-    // ====================================================
-    navigator.bluetooth.requestDevice({
-        filters: [{ namePrefix: "51210" }],
-        optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
-    })
-    .then(async device => {
-        bleDevice = device;
-        console.log("[TAHAP 1] Terhubung ke gerbang pemicu:", device.name);
-        showToast("Gerbang pemicu terhubung. Mengirim ketukan...", "info");
-        
-        const server = await device.gatt.connect();
-        const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
-        const char = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-
-        // Kirim Modbus poll untuk membangunkan MCU BMS
-        console.log("[TAHAP 1] Mengirim wake-up Modbus payload...");
-        await writeCharacteristic(char, CMD_MODBUS_POLL);
-        
-        // Jeda agar transmisi tuntas dan MCU membuka gerbang EZ BT Power
-        await new Promise(r => setTimeout(r, 1000));
-        
-        // Putus koneksi agar tidak memacetkan BLE chip
-        device.gatt.disconnect();
-        console.log("[TAHAP 1] Selesai. Gerbang pemicu diputus.");
-        showToast("Tahap 1 sukses! Silakan klik SAMBUNGKAN BT lagi untuk menyambung ke EZ BT Power.", "success");
-        
-        // Reset state untuk koneksi berikutnya (Tahap 2)
-        bleConnectionStatus = 'disconnected';
-        localBmsState.connectionStatus = 'disconnected';
-        updateUI(localBmsState);
-    })
-    .catch(err => {
-        // Jika gagal di Tahap 1 karena device 51210 tidak ditemukan atau user membatalkan,
-        // berikan opsi untuk langsung mencoba mendengarkan di Tahap 2 (misalnya MCU sudah bangun)
-        console.warn("[TAHAP 1] Dibatalkan atau gagal. Mencoba langsung menyambung ke pipa data (EZ BT)...", err);
-        showToast("Membuka dialog untuk EZ BT Power...", "info");
-        
-        // ====================================================
-        // TAHAP 2: SAMBUNG PIPA DATA (EZ BT POWER)
-        // ====================================================
-        connectToEzBtDataStream();
-    });
-}
-
-function connectToEzBtDataStream() {
+    console.log("Starting Web Bluetooth connection...");
+    showToast("Mencari perangkat EZ BT Power...", "info");
     bleConnectionStatus = 'connecting';
     updateUI(localBmsState);
 
+    // ── Trik Potong Kompas: Cukup 1x koneksi ke EZ BT Power ──
+    // Konek ke modul Cypress, aktifkan notifier, lalu kirim trigger modbus poll.
     navigator.bluetooth.requestDevice({
         filters: [{ namePrefix: "EZ BT" }],
         optionalServices: [
-            '0000ffe0-0000-1000-8000-00805f9b34fb',
-            '0000ffe5-0000-1000-8000-00805f9b34fb',
-            '00000001-0000-1000-8000-00805f9b34fb',
-            '00000006-0000-1000-8000-00805f9b34fb',
-            '000000ff-0000-1000-8000-00805f9b34fb'
+            '0000ffe0-0000-1000-8000-00805f9b34fb', // JKBMS FFE0
+            '0000ffe5-0000-1000-8000-00805f9b34fb', // JKBMS FFE5
+            '00000001-0000-1000-8000-00805f9b34fb', // Cypress / Industrial custom service 1
+            '00000006-0000-1000-8000-00805f9b34fb', // Cypress / Industrial custom service 6
+            '000000ff-0000-1000-8000-00805f9b34fb'  // Industrial custom service FF
         ]
     })
     .then(device => {
         bleDevice = device;
-        console.log("[TAHAP 2] Terhubung ke pipa data:", device.name);
+        console.log("Terhubung ke pipa data:", device.name);
         showToast(`Menghubungkan ke ${device.name}...`, "info");
         
         device.addEventListener('gattserverdisconnected', onBleDisconnected);
@@ -584,7 +531,7 @@ function connectToEzBtDataStream() {
     })
     .then(async server => {
         bleServer = server;
-        console.log("[TAHAP 2] GATT Terkoneksi. Memindai karakteristik secara dinamis...");
+        console.log("GATT Terkoneksi. Memindai karakteristik secara dinamis...");
         const services = await server.getPrimaryServices();
         let foundChar = null;
 
@@ -594,10 +541,15 @@ function connectToEzBtDataStream() {
                 const chars = await service.getCharacteristics();
                 for (const char of chars) {
                     const p = char.properties;
-                    if (p.notify) {
+                    // Cari karakteristik yang mendukung Notify dan Write
+                    const canWrite = p.write || p.writeWithoutResponse;
+                    const canNotify = p.notify;
+                    console.log(`   ├─ Characteristic: ${char.uuid} | Write: ${canWrite} | Notify: ${canNotify}`);
+                    
+                    if (canNotify && canWrite) {
                         foundChar = char;
                         bleService = service;
-                        console.log(`   └── ✅ JALUR DATA KETEMU DI UUID: ${char.uuid}`);
+                        console.log(`   └── ✅ JALUR KOMUNIKASI PASSTHROUGH KETEMU: ${char.uuid}`);
                         break;
                     }
                 }
@@ -608,19 +560,18 @@ function connectToEzBtDataStream() {
         }
 
         if (!foundChar) {
-            throw new Error("Karakteristik data stream (Notify) tidak ditemukan.");
+            throw new Error("Jalur komunikasi (Notify + Write) tidak ditemukan pada device ini.");
         }
 
         bleRxChar = foundChar;
-        // Gunakan karakteristik yang sama untuk TX jika mendukung Write, jika tidak cari pasangannya
         bleTxChar = foundChar;
     })
     .then(() => {
-        console.log("Mengaktifkan stream data baterai...");
+        console.log("Mengaktifkan notify stream data...");
         return bleRxChar.startNotifications();
     })
-    .then(() => {
-        console.log("Web BLE Connection Fully Configured!");
+    .then(async () => {
+        console.log("Web BLE Connection Configured! Registering listener...");
         bleRxChar.addEventListener('characteristicvaluechanged', onBleNotificationReceived);
         
         bleConnectionStatus = 'connected';
@@ -629,14 +580,18 @@ function connectToEzBtDataStream() {
             name: bleDevice.name || 'Jikong BMS (EZ BT)',
             address: bleDevice.id
         };
+
+        // Kirim Modbus wake-up/poll trigger awal langsung di jalur passthrough yang sama
+        console.log("[Modbus] Mengirim wake-up / poll trigger awal ke JKBMS...");
+        await writeCharacteristic(bleTxChar, CMD_MODBUS_POLL);
         
-        showToast("Terkoneksi! Mengalirkan data baterai...", "success");
+        showToast("Terkoneksi! Aliran data aktif.", "success");
         debugPacketCount = 0;
         atHeartbeatCount = 0;
         bleDataReady = false;
         jk02RxBuffer = new Uint8Array(0);
 
-        // Kirim Modbus poll trigger secara periodik jika diperlukan oleh modul data
+        // Kirim Modbus poll trigger secara periodik setiap 2 detik
         bleQueryTimer = setInterval(sendJk02Poll, 2000);
 
         switchBroadcast.checked = true;
@@ -647,6 +602,7 @@ function connectToEzBtDataStream() {
         console.error("GATT connection error:", err);
         showToast("Gagal menyambung: " + err.message, "error");
         disconnectWebBle();
+    });
 }
 
 function onBleNotificationReceived(event) {
