@@ -634,10 +634,10 @@ function connectToEzBtDeviceDirect(device) {
 }
 
 
-// ── TAHAP 2: MENYEDOT DATA TELEMETRY (EZ BT POWER) ──
+// ── MENYEDOT DATA TELEMETRY (EZ BT POWER) ──
 function triggerHandshakeStep2() {
-    console.log("[Handshake] Tahap 2: Menyambungkan ke pipa data EZ BT Power...");
-    showToast("2. Pilih perangkat EZ BT Power untuk streaming data...", "info");
+    console.log("[BMS BLE] Menyambungkan ke pipa data EZ BT Power...");
+    showToast("Pilih perangkat EZ BT Power untuk streaming data...", "info");
     bleConnectionStatus = 'connecting';
     updateUI(localBmsState);
 
@@ -736,7 +736,7 @@ function triggerHandshakeStep2() {
 
 // Dummy connectWebBle for compatibility
 function connectWebBle() {
-    triggerHandshakeStep1();
+    triggerHandshakeStep2();
 }
 
 
@@ -1911,29 +1911,16 @@ if (remoteKeyInput) {
     });
 }
 
-// Bind buttons for the Two-Step Handshake connection flow
+// Bind button to connect directly to EZ BT Power stream
 reconnectBtn.addEventListener('click', () => {
     if (localBmsState.mode === 'webble') {
         if (bleConnectionStatus === 'disconnected') {
-            triggerHandshakeStep1(); // 1. WAKE UP via 51210
+            triggerHandshakeStep2(); // LANGSUNG CONNECT KE EZ BT POWER DATA STREAM
         } else {
             disconnectWebBle();
         }
     }
 });
-
-const streamBtn = document.getElementById('stream-btn');
-if (streamBtn) {
-    streamBtn.addEventListener('click', () => {
-        if (localBmsState.mode === 'webble') {
-            if (bleConnectionStatus === 'disconnected') {
-                triggerHandshakeStep2(); // 2. STREAM via EZ BT Power
-            } else {
-                disconnectWebBle();
-            }
-        }
-    });
-}
 
 // Broadcast switch changed
 switchBroadcast.addEventListener('change', () => {
