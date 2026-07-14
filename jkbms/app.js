@@ -204,11 +204,11 @@ function updateUI(bms) {
         statusDot.classList.add('disconnected');
         statusText.innerText = 'VIRTUAL SIMULATOR (DEMO)';
         reconnectBtn.style.display = 'none';
-        remoteKeyContainer.classList.add('hidden');
+        if (remoteKeyContainer) remoteKeyContainer.classList.add('hidden');
         broadcastSwitchContainer.classList.add('hidden');
     } else if (bms.mode === 'remote') {
         reconnectBtn.style.display = 'none';
-        remoteKeyContainer.classList.remove('hidden');
+        if (remoteKeyContainer) remoteKeyContainer.classList.add('hidden');
         broadcastSwitchContainer.classList.add('hidden');
         
         // Remote connection status
@@ -220,7 +220,7 @@ function updateUI(bms) {
     } else {
         // webble mode
         reconnectBtn.style.display = 'inline-flex';
-        remoteKeyContainer.classList.add('hidden');
+        if (remoteKeyContainer) remoteKeyContainer.classList.add('hidden');
         
         // Display broadcast switch if Bluetooth is connected
         if (bleConnectionStatus === 'connected') {
@@ -1087,31 +1087,10 @@ function stopLocalSimulator() {
 // ====================================================
 // CLOUD REMOTE SYNCING ENGINE (npoint.io)
 // ====================================================
+const HARDCODED_REMOTE_KEY = '0d6013fe3fa362ab0388';
+
 function initRemoteBinAndStartBroadcast() {
-    let savedBinId = localStorage.getItem('jkbms_remote_bin_id');
-    if (savedBinId) {
-        startBroadcasting(savedBinId);
-    } else {
-        showToast("Membuat remote key baru...", "info");
-        // Create a new bin anonymously on npoint.io
-        fetch('https://api.npoint.io', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(localBmsState)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data && data.id) {
-                localStorage.setItem('jkbms_remote_bin_id', data.id);
-                showToast("Remote key dibuat!", "success");
-                startBroadcasting(data.id);
-            }
-        })
-        .catch(err => {
-            showToast("Gagal membuat remote key: " + err.message, "error");
-            switchBroadcast.checked = false;
-        });
-    }
+    startBroadcasting(HARDCODED_REMOTE_KEY);
 }
 
 function startBroadcasting(binId) {
@@ -1126,16 +1105,15 @@ function startBroadcasting(binId) {
             return;
         }
         
-        // Update the bin on npoint.io with current telemetry and settings
         fetch(`https://api.npoint.io/${binId}`, {
-            method: 'POST', // npoint updates are performed by POSTing to the bin URL
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(localBmsState)
         })
         .then(res => res.json())
         .then(() => console.log("Broadcasted telemetry to cloud."))
         .catch(err => console.error("Cloud broadcast failed:", err));
-    }, 3000);
+    }, 5000);
 }
 
 function stopBroadcasting() {
@@ -1150,16 +1128,11 @@ function stopBroadcasting() {
 function startRemotePolling() {
     if (remotePollTimer) clearInterval(remotePollTimer);
     
-    // Check local storage for previously used key to prefill input, fallback to default bin
-    let savedKey = localStorage.getItem('jkbms_remote_key_input') || '0d6013fe3fa362ab0388';
-    if (!remoteKeyInput.value) {
-        remoteKeyInput.value = savedKey;
-    }
-
     pollRemoteTelemetry(); // Poll immediately
     remotePollTimer = setInterval(pollRemoteTelemetry, 10000);
 }
 
+// Pre-fill remote key with user's custom npoint.io bin ID by default in startRemotePolling.
 function stopRemotePolling() {
     if (remotePollTimer) {
         clearInterval(remotePollTimer);
@@ -1172,17 +1145,8 @@ function stopRemotePolling() {
 }
 
 function pollRemoteTelemetry() {
-    let key = remoteKeyInput.value.trim();
-    if (!key) {
-        statusText.innerText = "MASUKKAN KEY AWAN";
-        statusDot.className = 'status-indicator-dot disconnected';
-        return;
-    }
-
-    // Save key in localStorage for convenience
-    localStorage.setItem('jkbms_remote_key_input', key);
-
-    fetch(`https://api.npoint.io/${key}`)
+    // Append unique timestamp parameter and set cache: 'no-store' to bypass browser caching and get fresh real-time data
+    fetch(`https://api.npoint.io/${HARDCODED_REMOTE_KEY}?t=${Date.now()}`, { cache: 'no-store' })
         .then(res => {
             if (!res.ok) throw new Error("Key tidak valid");
             return res.json();
@@ -1196,7 +1160,7 @@ function pollRemoteTelemetry() {
                 localBmsState.connectionStatus = 'connected';
                 localBmsState.connectedDevice = {
                     name: "Cloud Synced BMS",
-                    address: "npoint.io/" + key
+                    address: "npoint.io/" + HARDCODED_REMOTE_KEY
                 };
                 statusText.innerText = "REMOTE DATA SYNCED";
                 updateUI(localBmsState);
@@ -1204,7 +1168,7 @@ function pollRemoteTelemetry() {
         })
         .catch(err => {
             console.error("Remote poll error:", err);
-            statusText.innerText = "ERROR / KEY SALAH";
+            statusText.innerText = "KONEKSI CLOUD ERROR";
             statusDot.className = 'status-indicator-dot disconnected';
         });
 }
@@ -1240,11 +1204,13 @@ modeSelect.addEventListener('change', () => {
 });
 
 // Trigger poll immediately when Remote Key is edited
-remoteKeyInput.addEventListener('input', () => {
-    if (localBmsState.mode === 'remote') {
-        pollRemoteTelemetry();
-    }
-});
+if (remoteKeyInput) {
+    remoteKeyInput.addEventListener('input', () => {
+        if (localBmsState.mode === 'remote') {
+            pollRemoteTelemetry();
+        }
+    });
+}
 
 reconnectBtn.addEventListener('click', () => {
     if (localBmsState.mode === 'webble') {
