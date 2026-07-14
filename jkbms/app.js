@@ -576,6 +576,10 @@ function connectWebBle() {
         bleQueryTimer = setInterval(sendBmsQuery, 2000);
         sendBmsQuery(); 
         
+        // Automatically start Cloud Broadcast when Bluetooth connects!
+        switchBroadcast.checked = true;
+        initRemoteBinAndStartBroadcast();
+        
         updateUI(localBmsState);
     })
     .catch(err => {
