@@ -983,72 +983,189 @@ function writeBmsSetting(registerId, value, size = 1) {
         .catch(err => showToast("Gagal menulis setelan ke BMS: " + err.message, "error"));
 }
 
+// ── JK02 / 4E57 TLV ACCUMULATOR ─────────────────────────────────────
+// The BMS response to 0x97 uses format: 4E 57 00 13 [len2B] [rec4B] [cmd] [src] [TLV...] [end5B]
+// '4E 57 00 13' is a FIXED magic header — bytes[2..3] are NOT the total length!
+// Real TLV data length is at bytes[4..5] (big-endian).
+// Chunks arrive as multiple BLE MTU packets — accumulate and parse after 200ms silence.
+let jk02RxBuffer = new Uint8Array(0);
+let jk02FlushTimer = null;
+
 function handleIncomingBleData(chunk) {
-    let nextBuf = new Uint8Array(rxBuffer.length + chunk.length);
-    nextBuf.set(rxBuffer);
-    nextBuf.set(chunk, rxBuffer.length);
-    rxBuffer = nextBuf;
+    if (chunk.length === 0) return;
 
-    // Check for JK04 response header: AA 55 90 EB
-    if (rxBuffer.length >= 4 &&
-        rxBuffer[0] === 0xAA && rxBuffer[1] === 0x55 &&
-        rxBuffer[2] === 0x90 && rxBuffer[3] === 0xEB) {
-        console.log(`[JK04] Buffer has ${rxBuffer.length} bytes with AA55 header`);
-        // JK04: wait until we have enough data (min ~150 bytes for cell data)
-        if (rxBuffer.length >= 150 || (rxBuffer.length > 4 && rxBuffer.length < 150)) {
-            console.log(`[JK04] Attempting JK04 decode of ${rxBuffer.length} bytes`);
-            decodeJk04Packet(rxBuffer);
-            rxBuffer = new Uint8Array(0);
-        }
-        return;
-    }
+    // Accumulate chunks
+    const merged = new Uint8Array(jk02RxBuffer.length + chunk.length);
+    merged.set(jk02RxBuffer);
+    merged.set(chunk, jk02RxBuffer.length);
+    jk02RxBuffer = merged;
 
-    let headerIdx = -1;
-    for (let i = 0; i < rxBuffer.length - 1; i++) {
-        if (rxBuffer[i] === 0x4E && rxBuffer[i+1] === 0x57) {
-            headerIdx = i;
+    // Re-arm 200ms flush timer after each chunk
+    if (jk02FlushTimer) clearTimeout(jk02FlushTimer);
+    jk02FlushTimer = setTimeout(flushJk02Buffer, 200);
+}
+
+function flushJk02Buffer() {
+    const data = jk02RxBuffer;
+    jk02RxBuffer = new Uint8Array(0);
+    jk02FlushTimer = null;
+    if (data.length === 0) return;
+
+    const hexHead = Array.from(data.slice(0, 16)).map(b => b.toString(16).padStart(2,'0')).join(' ');
+    console.log(`[JK02 RX] Flushing ${data.length} bytes. Header: ${hexHead}`);
+
+    // Find 4E 57 00 13 magic header
+    let start = -1;
+    for (let i = 0; i <= data.length - 4; i++) {
+        if (data[i] === 0x4E && data[i+1] === 0x57 &&
+            data[i+2] === 0x00 && data[i+3] === 0x13) {
+            start = i;
             break;
         }
     }
 
-    if (headerIdx === -1) {
-        if (rxBuffer.length > 1000) rxBuffer = new Uint8Array(0);
+    if (start === -1) {
+        // No JK02 header — maybe it's old-style 4E 57 with variable length bytes[2..3]
+        let alt = -1;
+        for (let i = 0; i <= data.length - 2; i++) {
+            if (data[i] === 0x4E && data[i+1] === 0x57) { alt = i; break; }
+        }
+        if (alt !== -1) {
+            console.log(`[JK02 RX] Found 4E 57 at ${alt} (not '00 13'). Trying legacy parse.`);
+            parseTlvData(data, alt + 11, data.length - 5);
+        } else {
+            console.warn('[JK02 RX] No 4E 57 header found. Dumping hex:');
+            console.log(Array.from(data).map(b=>b.toString(16).padStart(2,'0')).join(' '));
+        }
         return;
     }
 
-    if (headerIdx > 0) {
-        rxBuffer = rxBuffer.slice(headerIdx);
+    // Found 4E 57 00 13 at position 'start'
+    // TLV Information Field starts at byte 12 from packet start (4+2+4+1+1 = 12)
+    const tlvStart = start + 12;
+    const tlvEnd   = data.length - 5; // skip last 5 bytes (end record + 4-byte CRC)
+    console.log(`[JK02 RX] 4E5700 13 at ${start}, TLV window [${tlvStart}..${tlvEnd}], size=${data.length}`);
+    parseTlvData(data, tlvStart, tlvEnd);
+}
+
+// ── TLV DECODER ──────────────────────────────────────────────────────
+// Tag definitions per JK BMS protocol documentation:
+//   0x79: Cell voltages  → len(1B), then len/2 cells × 2B BE in mV
+//   0x80: MOS temp       → 2B BE, 0.1°C
+//   0x81: Battery T1     → 2B BE, 0.1°C
+//   0x82: Battery T2     → 2B BE, 0.1°C
+//   0x83: Total voltage  → 4B BE, mV  (divide by 1000 = V)
+//   0x84: Current        → 4B BE, MSB=1 → discharging; value & 0x7FFF_FFFF in mA
+//   0x85: SOC            → 1B, raw %
+//   0x86: Remain cap     → 4B BE, mAh (divide by 1000 = Ah)
+//   0x87: Nominal cap    → 4B BE, mAh
+//   0x89: Cycle count    → 4B BE
+function parseTlvData(data, start, end) {
+    const t = localBmsState.telemetry;
+    const s = localBmsState.settings;
+    let off = start;
+    let updated = false;
+
+    while (off < end - 1) {
+        const tag = data[off]; off++;
+        if (tag === 0x00 || off >= end) break;
+
+        switch (tag) {
+            case 0x79: { // ── Cell voltages
+                const len = data[off]; off++;
+                const numCells = Math.floor(len / 2);
+                const cells = [];
+                for (let i = 0; i < numCells && off + 1 < end; i++) {
+                    const mv = (data[off] << 8) | data[off+1]; off += 2;
+                    cells.push({ index: i+1, voltage: +(mv/1000).toFixed(3), balancing: false });
+                }
+                if (cells.length > 0) {
+                    t.cells = cells;
+                    s.cellCount = cells.length;
+                    updated = true;
+                    console.log(`[TLV 0x79] ${cells.length} cells, first=${cells[0].voltage}V, last=${cells[cells.length-1].voltage}V`);
+                }
+                break;
+            }
+            case 0x80: { // MOS temperature
+                const raw = (data[off] << 8) | data[off+1]; off += 2;
+                t.temperatures.mosfet = +(raw / 10).toFixed(1);
+                updated = true;
+                break;
+            }
+            case 0x81: { // Battery T1
+                const raw = (data[off] << 8) | data[off+1]; off += 2;
+                t.temperatures.temp1 = +(raw / 10).toFixed(1);
+                updated = true;
+                break;
+            }
+            case 0x82: { // Battery T2
+                const raw = (data[off] << 8) | data[off+1]; off += 2;
+                t.temperatures.temp2 = +(raw / 10).toFixed(1);
+                updated = true;
+                break;
+            }
+            case 0x83: { // ── Total voltage (4B BE, mV)
+                const raw = ((data[off]<<24)|(data[off+1]<<16)|(data[off+2]<<8)|data[off+3])>>>0;
+                off += 4;
+                t.totalVoltage = +(raw / 1000).toFixed(3);
+                updated = true;
+                console.log(`[TLV 0x83] totalVoltage=${t.totalVoltage}V`);
+                break;
+            }
+            case 0x84: { // ── Current (4B BE, MSB=direction, rest=mA)
+                const raw = ((data[off]<<24)|(data[off+1]<<16)|(data[off+2]<<8)|data[off+3])>>>0;
+                off += 4;
+                const mA  = raw & 0x7FFFFFFF;
+                const dir = (raw & 0x80000000) ? -1 : 1; // MSB=1 → discharge (negative)
+                t.current = +(dir * mA / 1000).toFixed(3);
+                t.power   = +(t.totalVoltage * t.current).toFixed(1);
+                updated = true;
+                console.log(`[TLV 0x84] current=${t.current}A`);
+                break;
+            }
+            case 0x85: { // ── SOC (1B, %)
+                t.soc = data[off]; off++;
+                updated = true;
+                console.log(`[TLV 0x85] SOC=${t.soc}%`);
+                break;
+            }
+            case 0x86: { // Remaining capacity (4B BE, mAh)
+                const raw = ((data[off]<<24)|(data[off+1]<<16)|(data[off+2]<<8)|data[off+3])>>>0;
+                off += 4;
+                t.remainingCapacity = +(raw / 1000).toFixed(1);
+                updated = true;
+                break;
+            }
+            case 0x87: { // Nominal capacity (4B BE, mAh)
+                const raw = ((data[off]<<24)|(data[off+1]<<16)|(data[off+2]<<8)|data[off+3])>>>0;
+                off += 4;
+                s.nominalCapacity = +(raw / 1000).toFixed(1);
+                updated = true;
+                break;
+            }
+            case 0x89: { // Cycle count (4B BE)
+                off += 4;
+                break;
+            }
+            default: {
+                // Unknown tag: try skipping 2 bytes (most common TLV value size)
+                off += 2;
+                break;
+            }
+        }
     }
 
-    if (rxBuffer.length < 4) return;
-
-    let packetLength = (rxBuffer[2] << 8) | rxBuffer[3];
-    if (rxBuffer.length < packetLength) return;
-
-    let packet = rxBuffer.slice(0, packetLength);
-    rxBuffer = rxBuffer.slice(packetLength);
-
-    if (packetLength > 8) {
-        let dataPart = packet.slice(0, packetLength - 4);
-        let rxChecksum = ((packet[packetLength-4] << 24) >>> 0) + (packet[packetLength-3] << 16) + (packet[packetLength-2] << 8) + packet[packetLength-1];
-
-        let calculatedChecksum = 0;
-        for (let i = 0; i < dataPart.length; i++) {
-            calculatedChecksum += dataPart[i];
-        }
-
-        if (calculatedChecksum === rxChecksum) {
-            decodeJkBmsPacket(dataPart);
-        } else {
-            showToast("Error Checksum BLE: calc=" + calculatedChecksum + " rx=" + rxChecksum, "error");
-            console.warn(`[BLE Parser] Checksum error! calc=${calculatedChecksum}, rx=${rxChecksum}`);
-        }
-    }
-
-    if (rxBuffer.length >= 4) {
-        handleIncomingBleData(new Uint8Array(0));
+    if (updated) {
+        bleDataReady = true;
+        console.log(`[TLV] ✅ cells=${t.cells.length}, V=${t.totalVoltage}V, I=${t.current}A, SOC=${t.soc}%`);
+        updateUI(localBmsState);
+    } else {
+        console.warn('[TLV] No recognized tags parsed. Dumping:');
+        console.log(Array.from(data.slice(start, Math.min(end, start+64))).map(b=>b.toString(16).padStart(2,'0')).join(' '));
     }
 }
+
 
 function decodeJkBmsPacket(data) {
     let cmdType = data[8];
