@@ -571,11 +571,16 @@ function connectWebBle() {
             address: bleDevice.id
         };
         
-        showToast("Terhubung! Mengirim auth password...", "success");
-        debugPacketCount = 0; // reset counter
+        showToast("Terhubung! Mulai query JK04...", "success");
+        debugPacketCount = 0;
+        atHeartbeatCount = 0;
+        bmsProtocol = 'jk04'; // Start with JK04 binary protocol
+        bleDataReady = false;
 
-        // Send auth password first, THEN start periodic queries (every 1 second)
-        sendBmsAuth('123456');
+        // Brief delay then start querying
+        setTimeout(() => {
+            sendJk04Query();
+        }, 500);
         bleQueryTimer = setInterval(sendBmsQuery, 1000);
         
         // Automatically start Cloud Broadcast when Bluetooth connects!
@@ -617,26 +622,25 @@ function onBleNotificationReceived(event) {
         return;
     }
 
-    // Detect AT command mode: BMS sends 41 54 0D 0A ('AT\r\n') as heartbeat
+    // Detect AT heartbeat: 41 54 0D 0A = 'AT\r\n' - this is just a BMS keepalive broadcast
+    // The BMS sends this periodically regardless of protocol.
+    // We use JK04 binary (AA 55 90 EB 96) to request data.
     if (chunk.length === 4 &&
         chunk[0] === 0x41 && chunk[1] === 0x54 &&
         chunk[2] === 0x0D && chunk[3] === 0x0A) {
         atHeartbeatCount++;
-        if (atHeartbeatCount === 3) {
-            // After 3 consecutive AT heartbeats, switch to AT command mode
-            bmsProtocol = 'at';
-            console.log("[Protocol] AT mode detected! Switching to AT command protocol.");
-            showToast("Mode AT terdeteksi! Mengirim GETINF...", "info");
-            sendAtCommand('GETINF');
+        if (atHeartbeatCount === 1) {
+            console.log('[Heartbeat] BMS AT keepalive detected. Using JK04 protocol to query.');
         }
-        return; // Don't try to parse AT heartbeat as binary data
+        return; // Ignore heartbeat, don't parse
     }
-    
-    // Non-AT, non-auth data: try to parse as AT response text first
-    if (bmsProtocol === 'at') {
-        const text = new TextDecoder().decode(chunk).trim();
-        console.log(`[AT RESP] "${text}"`);
-        parseAtResponse(text);
+
+    // JK04 response: starts with AA 55 90 EB
+    if (chunk.length >= 4 &&
+        chunk[0] === 0xAA && chunk[1] === 0x55 &&
+        chunk[2] === 0x90 && chunk[3] === 0xEB) {
+        console.log('[JK04] Got JK04 response, length=' + chunk.length);
+        handleIncomingBleData(chunk);
         return;
     }
 
@@ -875,6 +879,20 @@ function handleIncomingBleData(chunk) {
     nextBuf.set(rxBuffer);
     nextBuf.set(chunk, rxBuffer.length);
     rxBuffer = nextBuf;
+
+    // Check for JK04 response header: AA 55 90 EB
+    if (rxBuffer.length >= 4 &&
+        rxBuffer[0] === 0xAA && rxBuffer[1] === 0x55 &&
+        rxBuffer[2] === 0x90 && rxBuffer[3] === 0xEB) {
+        console.log(`[JK04] Buffer has ${rxBuffer.length} bytes with AA55 header`);
+        // JK04: wait until we have enough data (min ~150 bytes for cell data)
+        if (rxBuffer.length >= 150 || (rxBuffer.length > 4 && rxBuffer.length < 150)) {
+            console.log(`[JK04] Attempting JK04 decode of ${rxBuffer.length} bytes`);
+            decodeJk04Packet(rxBuffer);
+            rxBuffer = new Uint8Array(0);
+        }
+        return;
+    }
 
     let headerIdx = -1;
     for (let i = 0; i < rxBuffer.length - 1; i++) {
@@ -1119,6 +1137,90 @@ function decodeJkBmsPacket(data) {
     bleDataReady = true; // Mark that we have real BLE data
     console.log(`[BLE Parser] ✅ Parse OK! Cells=${t.cells.length}, V=${t.totalVoltage}V, I=${t.current}A, SOC=${t.soc}%`);
     updateUI(localBmsState);
+}
+
+// ====================================================
+// JK04 PROTOCOL DECODER (AA 55 90 EB response)
+// Used by older JKBMS firmware
+// ====================================================
+function decodeJk04Packet(data) {
+    console.log(`[JK04 Decoder] Parsing ${data.length} bytes`);
+    const hex = Array.from(data.slice(0, 32)).map(b => b.toString(16).padStart(2,'0')).join(' ');
+    console.log(`[JK04 Decoder] Header bytes: ${hex}`);
+
+    // JK04 response structure (approximate offsets, may vary):
+    // [0..3]  = AA 55 90 EB (header)
+    // [4]     = frame type / command echo (0x96 = cell info response)
+    // [5]     = number of cells
+    // [6..6+cells*2-1] = cell voltages, 2 bytes each (mV)
+    // then: average voltage, delta, total voltage, current, temperature, remaining capacity, etc.
+
+    if (data.length < 6) {
+        console.warn('[JK04 Decoder] Too short, skipping');
+        return;
+    }
+
+    const frameType = data[4];
+    const cellCount = data[5];
+    console.log(`[JK04 Decoder] frameType=0x${frameType.toString(16)}, cellCount=${cellCount}`);
+
+    const t = localBmsState.telemetry;
+    const s = localBmsState.settings;
+
+    if (cellCount > 0 && cellCount <= 32 && data.length >= 6 + cellCount * 2) {
+        // Parse cell voltages
+        const cells = [];
+        for (let i = 0; i < cellCount; i++) {
+            const offset = 6 + i * 2;
+            const mv = (data[offset] << 8) | data[offset + 1];
+            cells.push({ index: i + 1, voltage: mv / 1000, balancing: false });
+        }
+        t.cells = cells;
+        s.cellCount = cellCount;
+
+        // After cells: average(2), delta(2), balance_bitmask(4), total_voltage(4), current(4), temp_mosfet(2), temp1(2), remaining_cap(4), nominal_cap(4), cycle(4), soc(2)
+        let off = 6 + cellCount * 2;
+        if (off + 2 <= data.length) { off += 2; } // skip avg volt
+        if (off + 2 <= data.length) { off += 2; } // skip delta
+        if (off + 4 <= data.length) { off += 4; } // skip balance bitmask
+        if (off + 4 <= data.length) {
+            t.totalVoltage = readUInt32BE(data, off) / 1000;
+            off += 4;
+        }
+        if (off + 4 <= data.length) {
+            // Current: signed 32-bit, positive=charge, negative=discharge in JK04
+            let rawCurrent = readInt32BE(data, off);
+            t.current = rawCurrent / 1000;
+            off += 4;
+        }
+        if (off + 2 <= data.length) {
+            t.temperatures.mosfet = readInt16BE(data, off) / 10;
+            off += 2;
+        }
+        if (off + 2 <= data.length) {
+            t.temperatures.temp1 = readInt16BE(data, off) / 10;
+            off += 2;
+        }
+        if (off + 4 <= data.length) {
+            t.remainingCapacity = readUInt32BE(data, off) / 1000;
+            off += 4;
+        }
+        if (off + 4 <= data.length) {
+            s.nominalCapacity = readUInt32BE(data, off) / 1000;
+            off += 4;
+        }
+
+        t.power = +(t.totalVoltage * t.current).toFixed(1);
+        t.soc = Math.min(100, Math.round((t.remainingCapacity / s.nominalCapacity) * 100));
+
+        bleDataReady = true;
+        console.log(`[JK04 Decoder] ✅ Cells=${t.cells.length}, V=${t.totalVoltage}V, I=${t.current}A, SOC=${t.soc}%`);
+        updateUI(localBmsState);
+    } else {
+        console.warn(`[JK04 Decoder] Unexpected cellCount=${cellCount} or too short (${data.length} bytes). Raw dump below:`);
+        const fullHex = Array.from(data).map(b => b.toString(16).padStart(2,'0')).join(' ');
+        console.log('[JK04 Raw]', fullHex);
+    }
 }
 
 // Helpers for buffer parsing
