@@ -511,11 +511,8 @@ function connectWebBle() {
     updateUI(localBmsState);
 
     navigator.bluetooth.requestDevice({
-        // Only show devices that advertise the JK BMS service (0xFFE0).
-        // This prevents accidentally picking unrelated Bluetooth devices.
-        filters: [
-            { services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }
-        ],
+        // Tampilkan semua device agar EZ BT Power_C54FE8945B62 bisa dipilih
+        acceptAllDevices: true,
         optionalServices: [
             '0000ffe0-0000-1000-8000-00805f9b34fb'
         ]
@@ -839,14 +836,26 @@ const CMD_JK02_POLL = new Uint8Array([
     0x00, 0x00, 0x00, 0x00
 ]);
 
+// Modbus RTU request frame captured from btsnoop log
+const CMD_MODBUS_POLL = new Uint8Array([
+    0x12, 0x01, 0x00, 0x03, 0x20, 0x00, 0x11, 0x11, 0x01, 0x80,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A
+]);
+
 function sendJk02Poll() {
     if (!bleTxChar) return;
-    console.log('[JK02] Sending poll: 4E 57 00 13 ...');
-    writeCharacteristic(bleTxChar, CMD_JK02_POLL)
-        .catch(err => console.error('[JK02] Poll error:', err));
+    const isModbusBms = bleDevice && bleDevice.name && bleDevice.name.includes("EZ BT");
+    if (isModbusBms) {
+        console.log('[Modbus] Sending Modbus poll trigger to EZ BT Power...');
+        writeCharacteristic(bleTxChar, CMD_MODBUS_POLL)
+            .catch(err => console.error('[Modbus] Poll error:', err));
+    } else {
+        console.log('[JK02] Sending standard poll: 4E 57 00 13 ...');
+        writeCharacteristic(bleTxChar, CMD_JK02_POLL)
+            .catch(err => console.error('[JK02] Poll error:', err));
+    }
 }
 
-// sendBmsQuery is now an alias for JK02 poll
 function sendBmsQuery() {
     sendJk02Poll();
 }
@@ -954,9 +963,27 @@ function flushJk02Buffer() {
     if (data.length === 0) return;
 
     const hexHead = Array.from(data.slice(0, 16)).map(b => b.toString(16).padStart(2,'0')).join(' ');
-    console.log(`[JK02 RX] Flushing ${data.length} bytes. Header: ${hexHead}`);
+    console.log(`[BMS RX] Flushing ${data.length} bytes. Header: ${hexHead}`);
 
-    // Find 4E 57 00 13 magic header
+    // ── 1. Cek apakah ini Modbus RTU dari JKBMS (EZ BT Power) ──
+    // Format: [seq] 75 00 42 [data...] (75 = Modbus Address 117 desimal, 42 = 66 bytes count)
+    // Berdasarkan analisis log btsnoop, byte ke-0 adalah frame counter, byte ke-1 adalah 0x75, byte ke-3 adalah 0x42
+    let modbusIndex = -1;
+    for (let i = 0; i <= data.length - 4; i++) {
+        if (data[i+1] === 0x75 && data[i+3] === 0x42) {
+            modbusIndex = i;
+            break;
+        }
+    }
+
+    if (modbusIndex !== -1) {
+        const payloadOffset = modbusIndex + 4; // Data sesungguhnya mulai di sini
+        console.log(`[Modbus RX] Terdeteksi Modbus RTU JKBMS di offset ${modbusIndex}. Parsing...`);
+        parseModbusBmsData(data, payloadOffset);
+        return;
+    }
+
+    // ── 2. Fallback ke JK02 (4E 57 00 13) ──
     let start = -1;
     for (let i = 0; i <= data.length - 4; i++) {
         if (data[i] === 0x4E && data[i+1] === 0x57 &&
@@ -967,7 +994,6 @@ function flushJk02Buffer() {
     }
 
     if (start === -1) {
-        // No JK02 header — maybe it's old-style 4E 57 with variable length bytes[2..3]
         let alt = -1;
         for (let i = 0; i <= data.length - 2; i++) {
             if (data[i] === 0x4E && data[i+1] === 0x57) { alt = i; break; }
@@ -976,18 +1002,87 @@ function flushJk02Buffer() {
             console.log(`[JK02 RX] Found 4E 57 at ${alt} (not '00 13'). Trying legacy parse.`);
             parseTlvData(data, alt + 11, data.length - 5);
         } else {
-            console.warn('[JK02 RX] No 4E 57 header found. Dumping hex:');
+            console.warn('[BMS RX] Unknown protocol header. Dumping hex:');
             console.log(Array.from(data).map(b=>b.toString(16).padStart(2,'0')).join(' '));
         }
         return;
     }
 
-    // Found 4E 57 00 13 at position 'start'
-    // TLV Information Field starts at byte 12 from packet start (4+2+4+1+1 = 12)
     const tlvStart = start + 12;
-    const tlvEnd   = data.length - 5; // skip last 5 bytes (end record + 4-byte CRC)
+    const tlvEnd   = data.length - 5;
     console.log(`[JK02 RX] 4E5700 13 at ${start}, TLV window [${tlvStart}..${tlvEnd}], size=${data.length}`);
     parseTlvData(data, tlvStart, tlvEnd);
+}
+
+// ── Modbus RTU Decoder untuk JKBMS (EZ BT Power) ──────────────────
+// Berdasarkan hex data dari btsnoop.log:
+// Offset 21-22: Voltase Sel 1 (BE)
+// Offset 26-27: Voltase Sel 2 (BE)
+// Offset 31-32: Voltase Sel 3 (BE)
+// Offset 38-39: Temp (MOS/Battery)
+// Offset 44-45: Total Voltage (BE)
+// Offset 60-61: Current (BE)
+function parseModbusBmsData(data, offset) {
+    const t = localBmsState.telemetry;
+    const s = localBmsState.settings;
+
+    try {
+        // Ekstrak voltase sel
+        const cells = [];
+        
+        // Kita petakan offset voltase sel berdasarkan dump dari btsnoop:
+        // Sel 1: index 21-22 (misal: 0x0B C1 = 3009 mV = 3.009V)
+        // Sel 2: index 26-27 (misal: 0x0B C2 = 3010 mV = 3.010V)
+        // Sel 3: index 31-32
+        // Kita loop untuk mendeteksi voltase sel yang valid (BE 2 byte)
+        let cellIdx = 1;
+        for (let i = offset + 21; i < offset + 66 && i + 1 < data.length; i += 5) {
+            const mv = (data[i] << 8) | data[i+1];
+            if (mv > 2000 && mv < 4500) {
+                cells.push({ index: cellIdx, voltage: +(mv/1000).toFixed(3), balancing: false });
+                cellIdx++;
+            }
+        }
+
+        if (cells.length > 0) {
+            t.cells = cells;
+            s.cellCount = cells.length;
+        }
+
+        // Total Voltage: Offset 44-45 (misal: 0x26 16 = 9750 mV = 9.75V)
+        if (offset + 45 < data.length) {
+            const totalMv = (data[offset + 44] << 8) | data[offset + 45];
+            if (totalMv > 5000 && totalMv < 100000) {
+                t.totalVoltage = +(totalMv / 1000).toFixed(3);
+            }
+        }
+
+        // Current: Offset 60-61
+        if (offset + 61 < data.length) {
+            const rawCur = (data[offset + 60] << 8) | data[offset + 61];
+            // Modbus current biasanya signed int16 atau offset
+            const isNegative = (rawCur & 0x8000) !== 0;
+            const mA = isNegative ? -(0x10000 - rawCur) : rawCur;
+            t.current = +(mA / 1000).toFixed(3);
+            t.power = +(t.totalVoltage * t.current).toFixed(1);
+        }
+
+        // Temp: Offset 38-39
+        if (offset + 39 < data.length) {
+            const rawTemp = (data[offset + 38] << 8) | data[offset + 39];
+            t.temperatures.mosfet = +(rawTemp / 10).toFixed(1);
+            t.temperatures.temp1 = +(rawTemp / 10).toFixed(1);
+        }
+
+        // Default SOC calculation if tag 0x85 not present
+        t.soc = 100; // fallback default
+        
+        bleDataReady = true;
+        console.log(`[Modbus Parsed] ✅ cells=${t.cells.length}, V=${t.totalVoltage}V, I=${t.current}A`);
+        updateUI(localBmsState);
+    } catch (e) {
+        console.error("Gagal parse Modbus JKBMS:", e);
+    }
 }
 
 // ── TLV DECODER ──────────────────────────────────────────────────────
