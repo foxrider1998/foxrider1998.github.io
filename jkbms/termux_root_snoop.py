@@ -175,73 +175,60 @@ def decode_jk_bms_payload(data):
     
     return t
 
-def render_ui(t):
-    clear_screen()
-    print("==================================================")
-    print(f"     {BOLD}JIKONG BMS ROOT LIVE SNOOP MONITOR{RESET}       ")
-    print("==================================================")
-    print(f"Status: {GREEN}SNOOPING HCI LOG (/data/log/bt/btsnoop_hci.log){RESET}")
-    print("--------------------------------------------------")
-    
-    # Draw SOC Bar
-    soc = t.get('soc', 0)
-    soc_color = GREEN if soc > 50 else (RED if soc < 20 else BLUE)
-    print(f"SOC: {soc_color}{draw_bar(soc)}{RESET}")
-    print("--------------------------------------------------")
+import urllib.request
+import json
 
-    # Pack Info
+def upload_to_cloud(telemetry, key="0d6013fe3fa362ab0388"):
+    url = f"https://api.npoint.io/{key}"
+    payload = {
+        "timestamp": int(time.time()),
+        "mode": "remote",
+        "connectionStatus": "connected",
+        "connectedDevice": {
+            "name": "Termux Root Snoop",
+            "address": "Localhci"
+        },
+        "telemetry": telemetry
+    }
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=3) as res:
+            res.read()
+            # print(f" {GREEN}•{RESET}", end="", flush=True) # visual dot indicator for upload
+    except Exception as e:
+        print(f"\n[Cloud Error] Upload gagal: {e}")
+
+# Rate limiter untuk cloud upload (max 1x per 3 detik)
+last_upload_time = 0
+
+def render_ui(t):
+    global last_upload_time
+    
+    # Cetak dalam format log stream biasa (tidak perlu clear screen agar tidak kedip-kedip)
     vtg = t.get('totalVoltage', 0.0)
     curr = t.get('current', 0.0)
-    pwr = t.get('power', 0.0) / 1000  # W to kW
-    cycles = t.get('cycleCount', 0)
+    soc = t.get('soc', 0)
+    temp = t.get('temperatures', {}).get('mosfet', 0.0)
     
-    curr_direction = "Pengisian" if curr > 0.05 else ("Pengosongan" if curr < -0.05 else "Standby")
-    curr_color = GREEN if curr > 0.05 else (RED if curr < -0.05 else RESET)
-    
-    print(f"Tegangan Pack : {vtg:.2f} V")
-    print(f"Arus Pack     : {curr_color}{curr:.2f} A ({curr_direction}){RESET}")
-    print(f"Daya Listrik  : {pwr:.2f} kW")
-    print(f"Jumlah Siklus : {cycles}")
-    
-    # Temps
-    temps = t.get('temperatures', {})
-    print(f"Suhu MOSFET   : {temps.get('mosfet', 0.0):.1f}°C")
-    print(f"Suhu Sel T1/T2: {temps.get('temp1', 0.0):.1f}°C / {temps.get('temp2', 0.0):.1f}°C")
-    print("--------------------------------------------------")
-    
-    # Switches status
-    sw = t.get('switches', {})
-    chg_status = f"{GREEN}ON{RESET}" if sw.get('charge') else f"{RED}OFF{RESET}"
-    dch_status = f"{GREEN}ON{RESET}" if sw.get('discharge') else f"{RED}OFF{RESET}"
-    bal_status = f"{GREEN}ON{RESET}" if sw.get('balance') else f"{RED}OFF{RESET}"
-    print(f"Saklar -> CHG: {chg_status} | DCH: {dch_status} | BAL: {bal_status}")
-    print("--------------------------------------------------")
-    
-    # Cell Grid
     cells = t.get('cells', [])
-    if cells:
-        print(f"{BOLD}[Tegangan Sel Individu]{RESET}")
-        row_str = ""
-        for i, cell in enumerate(cells):
-            idx = cell.get('index', 0)
-            volt = cell.get('voltage', 0.0)
-            cell_label = f"C{idx:02d}: {volt:.3f}V"
-            row_str += f"{cell_label:<12} "
-            if (i + 1) % 4 == 0 or (i + 1) == len(cells):
-                print(row_str)
-                row_str = ""
-        
-        voltages = [c.get('voltage', 0.0) for c in cells]
-        if voltages:
-            max_v = max(voltages)
-            min_v = min(voltages)
-            delta = max_v - min_v
-            max_idx = voltages.index(max_v) + 1
-            min_idx = voltages.index(min_v) + 1
-            print(f"Delta Sel: {delta:.3f} V | Max: C{max_idx:02d} ({max_v:.3f}V) | Min: C{min_idx:02d} ({min_v:.3f}V)")
-    else:
-        print("Menunggu data telemetry terdeteksi di HCI Log...")
-    print("==================================================")
+    cell_v_str = ", ".join([f"C{c['index']}:{c['voltage']:.3f}V" for c in cells[:8]]) # 8 sel pertama
+    if len(cells) > 8:
+        cell_v_str += "..."
+
+    timestamp = time.strftime("%H:%M:%S")
+    print(f"[{timestamp}] V={vtg:.2f}V | I={curr:+.2f}A | SOC={soc}% | Temp={temp:.1f}°C | {cell_v_str}")
+    
+    # Upload ke cloud secara periodik
+    now = time.time()
+    if now - last_upload_time >= 3.0:
+        last_upload_time = now
+        upload_to_cloud(t)
+
 
 def main():
     print("Memulai sadap bluetooth log...")
