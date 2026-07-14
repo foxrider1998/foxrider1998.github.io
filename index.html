@@ -1244,6 +1244,81 @@
             font-weight: 600;
             color: var(--primary-color);
         }
+        
+        /* BMS Modal Styles */
+        .bms-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            z-index: 1060;
+            display: none;
+        }
+        .bms-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 95%;
+            max-width: 900px;
+            height: 90%;
+            max-height: 600px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.3);
+            z-index: 1061;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .bms-modal.active, .bms-modal-overlay.active {
+            display: flex;
+        }
+        .bms-modal.active {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .bms-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+        }
+        .bms-modal-title {
+            margin: 0;
+            color: #3b82f6;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .bms-modal-close {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .bms-modal-close:hover {
+            color: #ef4444;
+        }
+        .bms-modal-body {
+            flex-grow: 1;
+            position: relative;
+            background: #000;
+        }
+        .bms-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+        }
     </style>
 </head>
 
@@ -1307,6 +1382,18 @@
         </div>
     </div>
     
+    <!-- BMS Monitor Popup Modal -->
+    <div class="bms-modal-overlay" id="bmsModalOverlay" onclick="closeBmsModal()"></div>
+    <div class="bms-modal" id="bmsModal">
+        <div class="bms-modal-header">
+            <h5 class="bms-modal-title"><i class="fas fa-car-battery me-2"></i> JKBMS Real-time Monitor</h5>
+            <button class="bms-modal-close" onclick="closeBmsModal()">&times;</button>
+        </div>
+        <div class="bms-modal-body">
+            <iframe src="jkbms/index.html" class="bms-iframe" id="bmsIframe"></iframe>
+        </div>
+    </div>
+    
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
@@ -1321,7 +1408,7 @@
                     <li class="nav-item"><a class="nav-link" href="#projects">Projects</a></li>
                     <li class="nav-item"><a class="nav-link" href="#skills">Skills</a></li>
                     <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
-                    <li class="nav-item"><a class="nav-link text-success fw-bold" href="jkbms/index.html" target="_blank"><i class="fas fa-car-battery me-1"></i>BMS Monitor</a></li>
+                    <li class="nav-item"><a class="nav-link text-success fw-bold" href="#" onclick="openBmsModal(event)"><i class="fas fa-car-battery me-1"></i>BMS Monitor</a></li>
                 </ul>
             </div>
         </div>
@@ -3045,6 +3132,18 @@ Generated at: ${visitorInfo.timestamp}`;
                 visitorCountElement.textContent = count;
             }
         });
+        
+        // BMS Modal controls
+        function openBmsModal(event) {
+            if (event) event.preventDefault();
+            document.getElementById('bmsModalOverlay').classList.add('active');
+            document.getElementById('bmsModal').classList.add('active');
+        }
+        
+        function closeBmsModal() {
+            document.getElementById('bmsModalOverlay').classList.remove('active');
+            document.getElementById('bmsModal').classList.remove('active');
+        }
         
         // Make analytics accessible globally for debugging
         window.getPortfolioAnalytics = () => tracker.getAnalytics();
