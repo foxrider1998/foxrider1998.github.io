@@ -594,8 +594,9 @@ function onBleNotificationReceived(event) {
     let chunk = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     
     debugPacketCount++;
-    if (debugPacketCount <= 10) {
-        showToast("Menerima paket data BLE: " + chunk.length + " bytes", "success");
+    if (debugPacketCount <= 15) {
+        const hex = Array.from(chunk).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+        showToast(`Menerima: ${chunk.length} bytes (${hex})`, "success");
     }
     
     handleIncomingBleData(chunk);
