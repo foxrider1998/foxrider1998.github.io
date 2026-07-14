@@ -42,16 +42,10 @@ def parse_warning_flags(flags):
     return warnings
 
 def decode_legacy_55aa_payload(data):
-    # Paket JKBMS Legacy 55 AA (panjang ~140 bytes)
-    # Byte 0-1: 55 AA
-    # Byte 4 s/d 35: Voltase Sel 1-16 (2 byte BE per sel, mV)
-    # Byte 38-39: MOSFET Temp
-    # Byte 40-41: T1 Temp
-    # Byte 42-43: T2 Temp
-    # Byte 44-45: Total Voltage (0.01V)
-    # Byte 48-49: Current (Signed BE, 0.01A)
-    # Byte 52: SOC
-    # Byte 53-54: Cycle Count
+    # Struktur JKBMS Legacy 55 AA berdasarkan analisis dump btsnoop:
+    # 55 AA (Header) -> disusul status bytes
+    # Voltase Sel 1-16: berturut-turut bertipe 2-byte BE (mV) dimulai dari offset 10:
+    # Sel 1: data[10..11], Sel 2: data[12..13], Sel 3: data[14..15] dst.
     t = {
         "cells": [],
         "temperatures": {},
@@ -59,9 +53,9 @@ def decode_legacy_55aa_payload(data):
     }
     
     try:
-        # Loop baca tegangan sel (asumsi 16 sel max)
+        # Loop baca tegangan sel (16 sel max)
         for i in range(16):
-            off = 4 + (i * 2)
+            off = 10 + (i * 2)
             if off + 1 < len(data):
                 mv = (data[off] << 8) | data[off+1]
                 if mv > 2000 and mv < 4500:
@@ -71,34 +65,32 @@ def decode_legacy_55aa_payload(data):
                         "balancing": False
                     })
         
-        # MOSFET Temp & Temps
-        if 39 < len(data):
-            t["temperatures"]["mosfet"] = read_int16_be(data, 38) * 0.1
-        if 41 < len(data):
-            t["temperatures"]["temp1"] = read_int16_be(data, 40) * 0.1
-        if 43 < len(data):
-            t["temperatures"]["temp2"] = read_int16_be(data, 42) * 0.1
+        # MOSFET & Sensor Temperature: Terletak di offset 78-79
+        if 79 < len(data):
+            raw_temp = read_int16_be(data, 78)
+            t["temperatures"]["mosfet"] = raw_temp * 0.1
+            t["temperatures"]["temp1"] = raw_temp * 0.1
+            t["temperatures"]["temp2"] = raw_temp * 0.1
             
-        # Total Voltage (0.01V)
+        # Total Voltage (0.01V): Terletak di offset 44-45
         if 45 < len(data):
             t["totalVoltage"] = read_uint16_be(data, 44) * 0.01
             
-        # Current (0.01A)
+        # Current (0.01A): Terletak di offset 48-49
         if 49 < len(data):
             t["current"] = read_int16_be(data, 48) * 0.01
             
-        # SOC
-        if 52 < len(data):
-            t["soc"] = data[52]
-            
-        # Cycle Count
-        if 54 < len(data):
-            t["cycleCount"] = read_uint16_be(data, 53)
+        # SOC: Terletak di offset 92-93
+        if 92 < len(data):
+            t["soc"] = data[92]
+        else:
+            t["soc"] = 100 # default
             
         t["power"] = t.get("totalVoltage", 0.0) * t.get("current", 0.0)
         return t
     except Exception as e:
         return None
+
 
 def decode_jk_bms_payload(data):
     cmd_type = data[8]
@@ -283,12 +275,12 @@ def main():
                 continue
             
             if is_legacy_55aa:
-                # Format legacy 55 AA biasanya memiliki panjang tetap atau panjang tertulis di byte ke-2
-                # Dari analisis log, format 55 AA memiliki panjang data paket ~140 bytes
-                packet_len = 140 
+                # Dari analisis dump log Samsung S20+, frame legacy JKBMS berawalan 55 AA memiliki panjang payload tetap 120 bytes
+                packet_len = 120 
             else:
                 # Format standard 4E 57 (panjang tertulis di byte ke-2 dan ke-3)
                 packet_len = (buffer[2] << 8) | buffer[3]
+
             
             if len(buffer) < packet_len:
                 continue
