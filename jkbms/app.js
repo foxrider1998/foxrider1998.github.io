@@ -466,24 +466,35 @@ function showToast(message, type = 'info') {
 // ====================================================
 // COMPATIBLE CHARACTERISTIC WRITE WRAPPER
 // ====================================================
-function writeCharacteristic(characteristic, value) {
-    if (!characteristic) return Promise.reject(new Error("Karakteristik tidak aktif"));
-    
-    if (characteristic.writeValueWithoutResponse) {
-        return characteristic.writeValueWithoutResponse(value)
-            .catch(err => {
-                console.warn("writeValueWithoutResponse failed, trying writeValueWithResponse...", err);
-                if (characteristic.writeValueWithResponse) {
-                    return characteristic.writeValueWithResponse(value);
-                }
-                return characteristic.writeValue(value);
-            });
-    } else if (characteristic.writeValueWithResponse) {
-        return characteristic.writeValueWithResponse(value);
-    } else {
-        return characteristic.writeValue(value);
+// ── BLE Write helper: max 20 bytes per chunk (Web Bluetooth MTU limit) ──────
+// The JK BMS uses a BLE-UART bridge (JDY/CC254x) with 20-byte MTU.
+// Sending >20 bytes at once silently truncates the checksum → BMS ignores command.
+// Solution: chunk to 20 bytes, use writeValueWithoutResponse, wait 30ms between chunks.
+const BLE_MTU = 20;
+const BLE_CHUNK_DELAY_MS = 30;
+
+async function writeCharacteristic(characteristic, value) {
+    if (!characteristic) throw new Error("Karakteristik tidak aktif");
+
+    const buf = value instanceof Uint8Array ? value : new Uint8Array(value);
+
+    // Prefer writeValueWithoutResponse for UART-bridge BLE (faster, no ACK wait)
+    const writeFn = characteristic.writeValueWithoutResponse
+        ? (chunk) => characteristic.writeValueWithoutResponse(chunk)
+        : characteristic.writeValueWithResponse
+            ? (chunk) => characteristic.writeValueWithResponse(chunk)
+            : (chunk) => characteristic.writeValue(chunk);
+
+    for (let i = 0; i < buf.length; i += BLE_MTU) {
+        const chunk = buf.slice(i, i + BLE_MTU);
+        await writeFn(chunk);
+        if (i + BLE_MTU < buf.length) {
+            // Add inter-chunk delay for UART buffer on BLE chip
+            await new Promise(r => setTimeout(r, BLE_CHUNK_DELAY_MS));
+        }
     }
 }
+
 
 // ====================================================
 // DIRECT BROWSER WEB BLUETOOTH CLIENT
