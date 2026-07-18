@@ -93,6 +93,52 @@
           </div>
         </div>
 
+        <!-- Remote Settings -->
+        <div class="cyber-panel">
+          <div class="panel-title">Remote Setting Control</div>
+          
+          <div class="key-input-container" style="margin-bottom: 10px;">
+            <label for="npoint-key-settings">Settings BIN ID:</label>
+            <input type="text" id="npoint-key-settings" placeholder="Bin ID (e.g. 221e52dae...)" value="221e52dae874886815ce">
+          </div>
+
+          <div style="display:grid;gap:10px;font-size:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:var(--cyan)">Relay Mode</span>
+              <select id="remote-relay-mode" class="hud-input" style="width: 120px; background: rgba(0,0,0,0.5); color: var(--cyan); border: 1px solid var(--cyan); padding: 4px;">
+                <option value="AUTO">AUTO</option>
+                <option value="Cas LiFePO">Cas LiFePO</option>
+                <option value="Cas Aki">Cas Aki</option>
+                <option value="Drain Aki">Drain Aki</option>
+                <option value="Drain LiFePO">Drain LiFePO</option>
+                <option value="Paralel">Paralel</option>
+              </select>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:var(--cyan)">LFP Full (%)</span>
+              <input type="number" id="remote-lfp-full" class="hud-input" style="width: 80px;" min="50" max="100">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:var(--cyan)">LFP Low (%)</span>
+              <input type="number" id="remote-lfp-low" class="hud-input" style="width: 80px;" min="5" max="30">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:var(--cyan)">Aki Min (V)</span>
+              <input type="number" id="remote-aki-min" class="hud-input" style="width: 80px;" step="0.5">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:var(--cyan)">Aki Max (V)</span>
+              <input type="number" id="remote-aki-max" class="hud-input" style="width: 80px;" step="0.5">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:var(--cyan)">UPS On (V)</span>
+              <input type="number" id="remote-ups-on" class="hud-input" style="width: 80px;" step="0.5">
+            </div>
+          </div>
+          
+          <button id="btn-save-settings" style="width:100%; margin-top:15px; padding:8px; font-weight:bold; background: rgba(0, 255, 255, 0.1); border: 1px solid var(--cyan); color: var(--cyan); cursor: pointer; text-transform: uppercase;">SAVE TO CLOUD</button>
+        </div>
+
       </div>
 
       <!-- Right Column -->
@@ -155,6 +201,6 @@
 
   </div>
 
-  <script src="app.js?v=1.1"></script>
+  <script src="app.js?v=1.4"></script>
 </body>
 </html>

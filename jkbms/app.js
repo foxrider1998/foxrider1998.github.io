@@ -154,7 +154,94 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --- Remote Settings Logic ---
+  let npointSettingsKey = localStorage.getItem('npoint_settings_key') || '221e52dae874886815ce';
+  let npointToken = localStorage.getItem('npoint_token') || '';
+  const keySettingsInput = document.getElementById('npoint-key-settings');
+  const tokenInput = document.getElementById('npoint-token');
+  if(keySettingsInput) keySettingsInput.value = npointSettingsKey;
+  if(tokenInput) tokenInput.value = npointToken;
+  
+  if(keySettingsInput) {
+    keySettingsInput.addEventListener('change', () => {
+      npointSettingsKey = keySettingsInput.value.trim();
+      localStorage.setItem('npoint_settings_key', npointSettingsKey);
+      fetchSettings();
+    });
+  }
+  if(tokenInput) {
+    tokenInput.addEventListener('change', () => {
+      npointToken = tokenInput.value.trim();
+      localStorage.setItem('npoint_token', npointToken);
+    });
+  }
+
+  async function fetchSettings() {
+    try {
+      const response = await fetch(`https://api.npoint.io/${npointSettingsKey}?t=${Date.now()}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error("Gagal mengambil settings");
+      const data = await response.json();
+      if (data && data.settings) {
+        const s = data.settings;
+        const e = (id, val) => { const el = document.getElementById(id); if(el && document.activeElement !== el) el.value = val; };
+        e('remote-relay-mode', s.relayMode || 'AUTO');
+        e('remote-lfp-full', s.lfpFull || 95);
+        e('remote-lfp-low', s.lfpLow || 10);
+        e('remote-aki-min', s.akiMin || 34.5);
+        e('remote-aki-max', s.akiMax || 36.5);
+        e('remote-ups-on', s.upsOnVoltage || 37.0);
+      }
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+    }
+  }
+
+  const saveBtn = document.getElementById('btn-save-settings');
+  if(saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+      const v = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
+      const settingsData = {
+        settings: {
+          relayMode: v('remote-relay-mode'),
+          lfpFull: parseFloat(v('remote-lfp-full')),
+          lfpLow: parseFloat(v('remote-lfp-low')),
+          akiMin: parseFloat(v('remote-aki-min')),
+          akiMax: parseFloat(v('remote-aki-max')),
+          upsOnVoltage: parseFloat(v('remote-ups-on'))
+        },
+        ts: Math.floor(Date.now() / 1000)
+      };
+      
+      saveBtn.innerText = "SAVING...";
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (npointToken) {
+          headers['Authorization'] = `Bearer ${npointToken}`;
+        }
+
+        
+        const res = await fetch(`https://api.npoint.io/${npointSettingsKey}`, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(settingsData)
+        });
+        if(!res.ok) {
+          const txt = await res.text();
+          throw new Error(`HTTP ${res.status}: ${txt}`);
+        }
+        saveBtn.innerText = "SUCCESS";
+        setTimeout(() => saveBtn.innerText = "SAVE TO CLOUD", 2000);
+      } catch (err) {
+        console.error("Save Error:", err);
+        saveBtn.innerText = "ERROR";
+        setTimeout(() => saveBtn.innerText = "SAVE TO CLOUD", 2000);
+        alert("Gagal menyimpan: " + err.message);
+      }
+    });
+  }
+
   // Start initialization
   fetchData();
+  fetchSettings();
   startTimer();
 });
