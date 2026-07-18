@@ -209,6 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
           akiMax: parseFloat(v('remote-aki-max')),
           upsOnVoltage: parseFloat(v('remote-ups-on'))
         },
+        updatedBy: 'github_pages',
         ts: Math.floor(Date.now() / 1000)
       };
       
